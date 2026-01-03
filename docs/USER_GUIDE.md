@@ -15,10 +15,10 @@ models.execute_kw(db, uid, password, 'res.partner', 'search_read',
 
 After:
 ```
-Show me the first 10 UK companies with their contact details
+Draft invoices for all outstanding timesheets for Acme Inc
 ```
 
-That's it. Claude reads the Odoo schema, builds the query, and returns your data.
+That's it. Claude finds the timesheets, looks up the partner, creates the invoice with the right lines—all from a single sentence.
 
 ## Quick Start
 

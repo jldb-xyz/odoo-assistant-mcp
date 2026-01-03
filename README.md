@@ -5,10 +5,10 @@
 An MCP server that connects Claude to your Odoo instance. Query data, create records, and build reusable workflows—all through natural conversation.
 
 ```
-"Show me all unpaid invoices over $1,000 from the last 30 days"
+"Draft invoices for all outstanding timesheets for Acme Inc"
 ```
 
-No API syntax. No field lookups. Just ask.
+No API syntax. No field lookups. No hunting through models. Just describe what you need.
 
 ## Why This Matters
 
