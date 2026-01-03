@@ -1,4 +1,4 @@
-# @jldb-xyz/odoo-mcp
+# odoo-mcp
 
 ## 1.0.0
 

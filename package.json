@@ -1,5 +1,5 @@
 {
-  "name": "@jldb-xyz/odoo-mcp",
+  "name": "odoo-mcp",
   "version": "1.0.0",
   "description": "MCP server for Odoo ERP integration",
   "license": "MIT",
@@ -13,7 +13,7 @@
     "url": "git+https://github.com/jldb-xyz/odoo-assistant-mcp.git"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "access": "public"
   },
   "scripts": {
     "build": "tsc && mkdir -p dist/docs && cp src/docs/*.md dist/docs/",
