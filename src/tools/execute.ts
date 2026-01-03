@@ -1,6 +1,7 @@
 import { z } from "zod";
-import type { OdooClient } from "../connection/odoo-client.js";
+import type { IOdooClient } from "../types/index.js";
 import { normalizeDomain, validateDomain } from "./domain-utils.js";
+import { defineTool } from "./registry.js";
 
 /**
  * Input schema for execute_method tool
@@ -28,11 +29,11 @@ const SEARCH_METHODS = ["search", "search_count", "search_read"];
  * Execute a custom method on an Odoo model
  */
 export async function executeMethod(
-  client: OdooClient,
-  input: ExecuteMethodInput
+  client: IOdooClient,
+  input: ExecuteMethodInput,
 ): Promise<{ success: boolean; result?: unknown; error?: string }> {
   try {
-    let args = [...input.args];
+    const args = [...input.args];
     const { model, method, kwargs } = input;
 
     // Special handling for search methods (domain normalization)
@@ -55,7 +56,7 @@ export async function executeMethod(
       args[0] = validatedDomain;
 
       console.error(
-        `Executing ${method} with normalized domain: ${JSON.stringify(validatedDomain)}`
+        `Executing ${method} with normalized domain: ${JSON.stringify(validatedDomain)}`,
       );
     }
 
@@ -65,3 +66,25 @@ export async function executeMethod(
     return { success: false, error: String(error) };
   }
 }
+
+/**
+ * Tool definition for registry
+ */
+export const executeMethodTool = defineTool({
+  name: "execute_method",
+  description: "Execute a custom method on an Odoo model",
+  inputSchema: {
+    model: ExecuteMethodInputSchema.shape.model,
+    method: ExecuteMethodInputSchema.shape.method,
+    args: z.array(z.unknown()).optional().describe("Positional arguments"),
+    kwargs: z.record(z.unknown()).optional().describe("Keyword arguments"),
+  },
+  handler: async (client, input) => {
+    return executeMethod(client, {
+      model: input.model,
+      method: input.method,
+      args: input.args ?? [],
+      kwargs: input.kwargs ?? {},
+    });
+  },
+});
