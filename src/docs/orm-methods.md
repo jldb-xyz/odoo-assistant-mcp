@@ -1,192 +1,170 @@
-# Odoo ORM Methods Reference
+# Odoo ORM Methods via MCP
+
+Reference for calling Odoo methods using `execute_method`.
 
 ## CRUD Operations
 
-### create(vals_list)
-Create one or more records.
+### create
+Create one or more records. Returns ID(s).
 
-```python
-# Single record
-partner_id = env['res.partner'].create({'name': 'John Doe'})
+```json
+// Single record - returns ID
+execute_method("res.partner", "create", [{"name": "John Doe"}])
 
-# Multiple records (returns recordset)
-partners = env['res.partner'].create([
-    {'name': 'John Doe'},
-    {'name': 'Jane Doe'},
-])
+// Multiple records - returns array of IDs
+execute_method("res.partner", "create", [[
+  {"name": "John Doe"},
+  {"name": "Jane Doe"}
+]])
 ```
 
-**Via XML-RPC:**
-```python
-# Single record - pass dict, returns ID
-id = models.execute_kw(db, uid, password, 'res.partner', 'create', [{'name': 'John'}])
+### write
+Update existing records. Returns true on success.
 
-# Multiple records - pass list of dicts, returns list of IDs
-ids = models.execute_kw(db, uid, password, 'res.partner', 'create', [
-    [{'name': 'John'}, {'name': 'Jane'}]
-])
+```json
+execute_method("res.partner", "write", [[id], {"name": "New Name"}])
+
+// Update multiple records
+execute_method("res.partner", "write", [[id1, id2], {"active": false}])
 ```
 
-### write(vals)
-Update existing records.
+### unlink
+Delete records. Returns true on success.
 
-```python
-partner.write({'name': 'New Name'})
+```json
+execute_method("res.partner", "unlink", [[id]])
+
+// Delete multiple
+execute_method("res.partner", "unlink", [[id1, id2, id3]])
 ```
 
-**Via XML-RPC:**
-```python
-models.execute_kw(db, uid, password, 'res.partner', 'write', [[id], {'name': 'New Name'}])
-```
+### read
+Read specific fields from records. Returns array of dicts.
 
-### unlink()
-Delete records.
+```json
+execute_method("res.partner", "read", [[id], ["name", "email"]])
 
-```python
-partner.unlink()
-```
-
-**Via XML-RPC:**
-```python
-models.execute_kw(db, uid, password, 'res.partner', 'unlink', [[id]])
-```
-
-### read(fields)
-Read specific fields from records.
-
-```python
-data = partner.read(['name', 'email'])
-```
-
-**Via XML-RPC:**
-```python
-# Returns list of dicts
-data = models.execute_kw(db, uid, password, 'res.partner', 'read', [[id], ['name', 'email']])
+// Returns: [{"id": 1, "name": "John", "email": "john@example.com"}]
 ```
 
 ## Search Operations
 
-### search(domain, offset=0, limit=None, order=None)
-Search for record IDs matching domain.
+### search
+Find record IDs matching a domain.
 
-```python
-ids = env['res.partner'].search([('is_company', '=', True)], limit=10)
+```json
+execute_method("res.partner", "search", [
+  [["is_company", "=", true]]
+], {"limit": 10})
+
+// Returns: [1, 5, 12, ...]
 ```
 
-**Via XML-RPC:**
-```python
-ids = models.execute_kw(db, uid, password, 'res.partner', 'search', [
-    [['is_company', '=', True]]
-], {'limit': 10})
+### search_read
+Search and read in one call (preferred - more efficient).
+
+```json
+execute_method("res.partner", "search_read", [
+  [["is_company", "=", true]]
+], {"fields": ["name", "email"], "limit": 10})
+
+// Returns: [{"id": 1, "name": "Acme", "email": "info@acme.com"}, ...]
 ```
 
-### search_read(domain, fields, offset=0, limit=None, order=None)
-Search and read in one call (more efficient).
-
-```python
-data = env['res.partner'].search_read(
-    [('is_company', '=', True)],
-    ['name', 'email'],
-    limit=10
-)
-```
-
-**Via XML-RPC:**
-```python
-data = models.execute_kw(db, uid, password, 'res.partner', 'search_read', [
-    [['is_company', '=', True]]
-], {'fields': ['name', 'email'], 'limit': 10})
-```
-
-### search_count(domain)
+### search_count
 Count records matching domain.
 
-```python
-count = env['res.partner'].search_count([('is_company', '=', True)])
+```json
+execute_method("res.partner", "search_count", [
+  [["is_company", "=", true]]
+])
+
+// Returns: 42
 ```
 
-### name_search(name, args=None, operator='ilike', limit=100)
-Search by display name, returns [(id, name), ...].
+### name_search
+Search by display name. Returns `[[id, name], ...]`.
 
-```python
-results = env['res.partner'].name_search('john', limit=5)
-# Returns: [(1, 'John Doe'), (2, 'Johnny Smith')]
+```json
+execute_method("res.partner", "name_search", ["john"], {"limit": 5})
+
+// Returns: [[1, "John Doe"], [2, "Johnny Smith"]]
 ```
 
-## Introspection
+## Model Introspection
 
-### fields_get(fields=None, attributes=None)
-Get field definitions for a model.
+### fields_get
+Get field definitions. Essential for understanding a model.
 
-```python
-fields = env['res.partner'].fields_get(['name', 'email'], ['type', 'required', 'relation'])
+```json
+execute_method("res.partner", "fields_get", [], {
+  "attributes": ["type", "required", "relation", "selection"]
+})
 ```
 
-**Useful attributes:**
-- `type` - Field type (char, integer, many2one, etc.)
-- `string` - Human-readable label
+**Key attributes:**
+- `type` - Field type (char, integer, many2one, one2many, etc.)
 - `required` - Is field required?
 - `readonly` - Is field read-only?
 - `relation` - Related model (for relational fields)
-- `selection` - Available options (for selection fields)
-- `help` - Help text
+- `selection` - Options for selection fields
 
-### default_get(fields)
+### default_get
 Get default values for fields.
 
-```python
-defaults = env['res.partner'].default_get(['country_id', 'lang'])
+```json
+execute_method("res.partner", "default_get", [["country_id", "lang"]])
 ```
 
 ## Relational Fields
 
 ### Many2one
-```python
-# Create with ID
-{'partner_id': 5}
-
-# Via XML-RPC - just use the ID
-{'partner_id': 5}
+Just use the ID:
+```json
+{"partner_id": 5, "country_id": 233}
 ```
 
-### One2many / Many2many
-Special command syntax for updates:
+### One2many / Many2many Commands
+Special tuple syntax for modifying relations:
 
-```python
-# Commands:
-# (0, 0, values) - Create new record
-# (1, id, values) - Update existing record
-# (2, id, 0) - Delete record
-# (3, id, 0) - Unlink (remove from relation, don't delete)
-# (4, id, 0) - Link existing record
-# (5, 0, 0) - Unlink all
-# (6, 0, ids) - Replace with list of IDs
+| Command | Meaning |
+|---------|---------|
+| `[0, 0, values]` | Create new linked record |
+| `[1, id, values]` | Update existing linked record |
+| `[2, id, 0]` | Delete linked record |
+| `[3, id, 0]` | Unlink (remove from relation, keep record) |
+| `[4, id, 0]` | Link existing record |
+| `[5, 0, 0]` | Unlink all |
+| `[6, 0, [ids]]` | Replace all with these IDs |
 
-# Example: Add new invoice line
-{'invoice_line_ids': [(0, 0, {'product_id': 1, 'quantity': 5})]}
+**Examples:**
+```json
+// Create new invoice line
+{"invoice_line_ids": [[0, 0, {"product_id": 1, "quantity": 5}]]}
 
-# Example: Link existing records
-{'tag_ids': [(6, 0, [1, 2, 3])]}
+// Replace all tags
+{"tag_ids": [[6, 0, [1, 2, 3]]]}
 
-# Example: Add to existing
-{'tag_ids': [(4, new_tag_id, 0)]}
+// Add one tag to existing
+{"tag_ids": [[4, 99, 0]]}
 ```
 
 ## Context
 
-Many methods accept a context dict for localization and special behaviors:
+Pass context via kwargs for special behaviors:
 
-```python
-# Via XML-RPC - pass as kwargs
-models.execute_kw(db, uid, password, 'res.partner', 'create',
-    [{'name': 'Test'}],
-    {'context': {'lang': 'fr_FR', 'tz': 'Europe/Paris'}}
-)
+```json
+execute_method("res.partner", "create", [{"name": "Test"}], {
+  "context": {
+    "lang": "fr_FR",
+    "tz": "Europe/Paris",
+    "tracking_disable": true
+  }
+})
 ```
 
 **Common context keys:**
 - `lang` - Language code for translations
 - `tz` - Timezone
-- `active_test` - Set False to include archived records
+- `active_test` - Set `false` to include archived records
 - `tracking_disable` - Disable mail tracking (faster imports)
-- `no_reset_password` - Don't send password reset email on user create
