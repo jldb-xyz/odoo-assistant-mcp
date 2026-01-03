@@ -14,9 +14,7 @@ describe("odoo-resources", () => {
         { model: "res.partner", name: "Contact" },
         { model: "hr.employee", name: "Employee" },
       ];
-      const client = new MockClientBuilder()
-        .withModels(mockModels)
-        .build();
+      const client = new MockClientBuilder().withModels(mockModels).build();
 
       const result = await handleModelsResource(client);
 
@@ -27,9 +25,7 @@ describe("odoo-resources", () => {
     });
 
     it("should handle empty models list", async () => {
-      const client = new MockClientBuilder()
-        .withModels([])
-        .build();
+      const client = new MockClientBuilder().withModels([]).build();
 
       const result = await handleModelsResource(client);
 

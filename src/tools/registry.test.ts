@@ -1,10 +1,10 @@
+import { beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
-import { describe, expect, it, beforeEach } from "vitest";
 import {
-  ToolRegistry,
   createToolRegistry,
   defineTool,
   type ToolDefinition,
+  ToolRegistry,
 } from "./registry.js";
 
 describe("ToolRegistry", () => {
