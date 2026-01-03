@@ -1,9 +1,17 @@
 #!/usr/bin/env node
+import { parseArgs } from "./cli.js";
+import { runHttpServer } from "./http-server.js";
 import { runServer } from "./server.js";
 
 async function main(): Promise<number> {
   try {
-    await runServer();
+    const options = parseArgs();
+
+    if (options.transport === "http") {
+      await runHttpServer({ port: options.port, host: options.host });
+    } else {
+      await runServer();
+    }
     return 0;
   } catch (error) {
     console.error("Error starting server:", error);

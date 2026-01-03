@@ -22,6 +22,9 @@ export const ENV_VARS = {
   PASSWORD: "ODOO_PASSWORD",
   TIMEOUT: "ODOO_TIMEOUT",
   VERIFY_SSL: "ODOO_VERIFY_SSL",
+  // HTTP transport config
+  MCP_PORT: "ODOO_MCP_PORT",
+  MCP_HOST: "ODOO_MCP_HOST",
 } as const;
 
 /**
