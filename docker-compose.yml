@@ -1,0 +1,126 @@
+# Docker Compose for Odoo MCP Integration Tests
+# Supports Odoo 16, 17, and 18 via profiles
+#
+# Usage:
+#   Start Odoo 17 (default): docker compose up -d
+#   Start Odoo 16: docker compose --profile odoo16 up -d
+#   Start Odoo 18: docker compose --profile odoo18 up -d
+#   Start all versions: docker compose --profile odoo16 --profile odoo18 up -d
+#
+# Wait for ready: ./scripts/wait-for-odoo.sh [port]
+# Stop: docker compose down -v
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "15432:5432"
+
+  # Odoo 16 - port 8016
+  odoo16:
+    image: odoo:16
+    profiles: ["odoo16"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      HOST: postgres
+      USER: odoo
+      PASSWORD: odoo
+    volumes:
+      - odoo16_data:/var/lib/odoo
+      - odoo16_addons:/mnt/extra-addons
+    ports:
+      - "8016:8069"
+    command: >
+      --database=odoo_template_16
+      --init=base
+      --without-demo=all
+      --db_host=postgres
+      --db_user=odoo
+      --db_password=odoo
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8069/web/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  # Odoo 17 - port 8017 (default)
+  odoo17:
+    image: odoo:17
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      HOST: postgres
+      USER: odoo
+      PASSWORD: odoo
+    volumes:
+      - odoo17_data:/var/lib/odoo
+      - odoo17_addons:/mnt/extra-addons
+    ports:
+      - "8017:8069"
+    command: >
+      --database=odoo_template_17
+      --init=base
+      --without-demo=all
+      --db_host=postgres
+      --db_user=odoo
+      --db_password=odoo
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8069/web/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  # Odoo 18 - port 8018
+  odoo18:
+    image: odoo:18
+    profiles: ["odoo18"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      HOST: postgres
+      USER: odoo
+      PASSWORD: odoo
+    volumes:
+      - odoo18_data:/var/lib/odoo
+      - odoo18_addons:/mnt/extra-addons
+    ports:
+      - "8018:8069"
+    command: >
+      --database=odoo_template_18
+      --init=base
+      --without-demo=all
+      --db_host=postgres
+      --db_user=odoo
+      --db_password=odoo
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8069/web/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+volumes:
+  postgres_data:
+  odoo16_data:
+  odoo16_addons:
+  odoo17_data:
+  odoo17_addons:
+  odoo18_data:
+  odoo18_addons:
