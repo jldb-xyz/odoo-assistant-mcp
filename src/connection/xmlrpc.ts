@@ -1,5 +1,5 @@
-import xmlrpc from "xmlrpc";
 import { URL } from "node:url";
+import xmlrpc from "xmlrpc";
 
 export interface XmlRpcClientOptions {
   url: string;
@@ -44,11 +44,7 @@ export class XmlRpcClient {
 
     const clientOptions: InternalClientOptions = {
       host: parsedUrl.hostname,
-      port: parsedUrl.port
-        ? parseInt(parsedUrl.port)
-        : isHttps
-          ? 443
-          : 80,
+      port: parsedUrl.port ? parseInt(parsedUrl.port, 10) : isHttps ? 443 : 80,
       path: this.options.path,
     };
 

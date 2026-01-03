@@ -1,11 +1,11 @@
 import * as fs from "node:fs";
-import * as path from "node:path";
 import * as os from "node:os";
+import * as path from "node:path";
 import {
-  OdooConfigSchema,
-  type OdooConfig,
-  ENV_VARS,
   CONFIG_PATHS,
+  ENV_VARS,
+  type OdooConfig,
+  OdooConfigSchema,
 } from "../types/index.js";
 
 /**
@@ -59,7 +59,7 @@ export function loadConfig(): OdooConfig {
   }
 
   throw new Error(
-    "No Odoo configuration found. Please set environment variables (ODOO_URL, ODOO_DB, ODOO_USERNAME, ODOO_PASSWORD) or create an odoo_config.json file."
+    "No Odoo configuration found. Please set environment variables (ODOO_URL, ODOO_DB, ODOO_USERNAME, ODOO_PASSWORD) or create an odoo_config.json file.",
   );
 }
 

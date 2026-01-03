@@ -1,4 +1,8 @@
-import type { Domain, DomainCondition, DomainOperator } from "../types/index.js";
+import type {
+  Domain,
+  DomainCondition,
+  DomainOperator,
+} from "../types/index.js";
 
 interface ConditionObject {
   field: string;
@@ -76,7 +80,7 @@ function normalizeArrayDomain(arr: unknown[]): Domain {
 
   // Check if it's already a valid domain with conditions/operators
   const hasConditions = arr.some(
-    (item) => Array.isArray(item) || isOperator(item)
+    (item) => Array.isArray(item) || isOperator(item),
   );
 
   if (hasConditions) {
