@@ -1,5 +1,4 @@
-import type { OdooClient } from "../connection/odoo-client.js";
-import type { Domain } from "../types/odoo.js";
+import type { Domain, IOdooClient } from "../types/index.js";
 
 export interface ResourceResult {
   [key: string]: unknown;
@@ -14,7 +13,7 @@ export interface ResourceResult {
  * odoo://models - List all models
  */
 export async function handleModelsResource(
-  client: OdooClient
+  client: IOdooClient,
 ): Promise<ResourceResult> {
   const models = await client.getModels();
 
@@ -33,8 +32,8 @@ export async function handleModelsResource(
  * odoo://model/{model_name} - Model info with fields
  */
 export async function handleModelResource(
-  client: OdooClient,
-  modelName: string
+  client: IOdooClient,
+  modelName: string,
 ): Promise<ResourceResult> {
   try {
     const modelInfo = await client.getModelInfo(modelName);
@@ -80,13 +79,13 @@ export async function handleModelResource(
  * odoo://record/{model_name}/{record_id} - Single record
  */
 export async function handleRecordResource(
-  client: OdooClient,
+  client: IOdooClient,
   modelName: string,
-  recordId: string
+  recordId: string,
 ): Promise<ResourceResult> {
   try {
     const id = parseInt(recordId, 10);
-    if (isNaN(id)) {
+    if (Number.isNaN(id)) {
       throw new Error(`Invalid record ID: ${recordId}`);
     }
 
@@ -101,7 +100,7 @@ export async function handleRecordResource(
             text: JSON.stringify(
               { error: `Record not found: ${modelName} ID ${recordId}` },
               null,
-              2
+              2,
             ),
           },
         ],
@@ -134,9 +133,9 @@ export async function handleRecordResource(
  * odoo://search/{model_name}/{domain} - Search records
  */
 export async function handleSearchResource(
-  client: OdooClient,
+  client: IOdooClient,
   modelName: string,
-  domainStr: string
+  domainStr: string,
 ): Promise<ResourceResult> {
   try {
     const domain = JSON.parse(decodeURIComponent(domainStr)) as Domain;
