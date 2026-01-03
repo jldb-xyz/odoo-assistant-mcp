@@ -1,11 +1,18 @@
+export * from "./access.js";
+export * from "./actions.js";
+export * from "./bulk.js";
 export * from "./docs.js";
 export * from "./domain-utils.js";
 export * from "./execute.js";
 export * from "./introspection.js";
 export * from "./registry.js";
+export * from "./search.js";
 export * from "./sops.js";
 
 // Import tool definitions for the default registry
+import { checkAccessTool } from "./access.js";
+import { executeActionTool, listAvailableActionsTool } from "./actions.js";
+import { bulkOperationTool } from "./bulk.js";
 import { listDocsTool, readDocTool, saveDocTool } from "./docs.js";
 import { executeMethodTool } from "./execute.js";
 import {
@@ -23,6 +30,7 @@ import {
   type ToolDefinition,
   type ToolRegistry,
 } from "./registry.js";
+import { findRecordByNameTool, searchRecordsTool } from "./search.js";
 import { listSopsTool, readSopTool, saveSopTool } from "./sops.js";
 
 /**
@@ -40,6 +48,16 @@ export const allToolDefinitions: ToolDefinition[] = [
   explainFieldTool,
   getRecordSampleTool,
   validateDomainTool,
+  // Search and record resolution tools
+  findRecordByNameTool,
+  searchRecordsTool,
+  // Access control tools
+  checkAccessTool,
+  // Workflow action tools
+  listAvailableActionsTool,
+  executeActionTool,
+  // Bulk operation tools
+  bulkOperationTool,
   // Documentation tools
   listDocsTool,
   readDocTool,
