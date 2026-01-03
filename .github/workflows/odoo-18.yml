@@ -1,0 +1,15 @@
+name: Odoo 18
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  integration-test:
+    uses: ./.github/workflows/integration-test.yml
+    with:
+      odoo-version: "18"
+      docker-profile: "--profile odoo18"
+      port: "8018"

@@ -1,0 +1,57 @@
+name: Integration Test
+
+on:
+  workflow_call:
+    inputs:
+      odoo-version:
+        required: true
+        type: string
+      docker-profile:
+        required: true
+        type: string
+      port:
+        required: true
+        type: string
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build
+        run: yarn build
+
+      - name: Start Odoo ${{ inputs.odoo-version }} with Docker Compose
+        run: docker compose ${{ inputs.docker-profile }} up -d
+
+      - name: Wait for Odoo ${{ inputs.odoo-version }} to be ready
+        run: ./scripts/wait-for-odoo.sh localhost ${{ inputs.port }} 180
+        timeout-minutes: 5
+
+      - name: Run integration tests against Odoo ${{ inputs.odoo-version }}
+        run: yarn test:integration:${{ inputs.odoo-version }}
+        env:
+          ODOO_VERSION: ${{ inputs.odoo-version }}
+
+      - name: Show Docker logs on failure
+        if: failure()
+        run: docker compose ${{ inputs.docker-profile }} logs
+
+      - name: Stop Docker Compose
+        if: always()
+        run: docker compose ${{ inputs.docker-profile }} down -v

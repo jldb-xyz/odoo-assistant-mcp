@@ -1,0 +1,15 @@
+name: Odoo 16
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  integration-test:
+    uses: ./.github/workflows/integration-test.yml
+    with:
+      odoo-version: "16"
+      docker-profile: "--profile odoo16"
+      port: "8016"
