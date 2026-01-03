@@ -1,6 +1,6 @@
 {
   "name": "@jldb-xyz/odoo-mcp",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "description": "MCP server for Odoo ERP integration",
   "type": "module",
   "packageManager": "yarn@4.9.2",
