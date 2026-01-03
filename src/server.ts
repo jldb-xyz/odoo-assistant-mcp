@@ -20,10 +20,29 @@ import {
 } from "./tools/index.js";
 import type { IOdooClient } from "./types/index.js";
 
-// Global client instance
+// Global client instance (mutable for runtime, but testable)
 let odooClient: OdooClient | null = null;
 
-async function initializeClient(): Promise<OdooClient> {
+/**
+ * Reset the global client (for testing only)
+ * @internal
+ */
+export function _resetClient(): void {
+  odooClient = null;
+}
+
+/**
+ * Set the global client (for testing only)
+ * @internal
+ */
+export function _setClient(client: OdooClient | null): void {
+  odooClient = client;
+}
+
+/**
+ * Initialize and connect an Odoo client using environment config
+ */
+export async function initializeClient(): Promise<OdooClient> {
   const config = loadConfig();
   const options = getClientOptions();
 
@@ -40,7 +59,11 @@ async function initializeClient(): Promise<OdooClient> {
   return client;
 }
 
-function getClient(): OdooClient {
+/**
+ * Get the global Odoo client instance.
+ * Throws if not initialized via runServer().
+ */
+export function getClient(): OdooClient {
   if (!odooClient) {
     throw new Error("Odoo client not initialized");
   }
@@ -60,6 +83,25 @@ export interface ServerDependencies {
 }
 
 /**
+ * Format a ToolResult for MCP response.
+ * If result.text exists, return it directly as markdown.
+ * Otherwise, JSON.stringify the result.
+ */
+export function formatToolResult(result: ToolResult): string {
+  // If the result contains a text field, return it directly (for markdown content)
+  if (
+    result.result &&
+    typeof result.result === "object" &&
+    "text" in result.result &&
+    typeof (result.result as { text: unknown }).text === "string"
+  ) {
+    return (result.result as { text: string }).text;
+  }
+  // Otherwise, return the full result as JSON
+  return JSON.stringify(result, null, 2);
+}
+
+/**
  * Create the MCP server with optional dependency injection.
  * When deps is provided, uses the injected client (for testing).
  * When deps is not provided, uses the global client (for production).
@@ -75,25 +117,6 @@ export function createServer(deps?: ServerDependencies): McpServer {
 
   // Use provided registry or create default Odoo tool registry
   const toolRegistry = deps?.toolRegistry ?? createOdooToolRegistry();
-
-  /**
-   * Format a ToolResult for MCP response.
-   * If result.text exists, return it directly as markdown.
-   * Otherwise, JSON.stringify the result.
-   */
-  function formatToolResult(result: ToolResult): string {
-    // If the result contains a text field, return it directly (for markdown content)
-    if (
-      result.result &&
-      typeof result.result === "object" &&
-      "text" in result.result &&
-      typeof (result.result as { text: unknown }).text === "string"
-    ) {
-      return (result.result as { text: string }).text;
-    }
-    // Otherwise, return the full result as JSON
-    return JSON.stringify(result, null, 2);
-  }
 
   // ===== Register All Tools from Registry =====
   for (const tool of toolRegistry.getAll()) {
@@ -165,11 +188,22 @@ export function createServer(deps?: ServerDependencies): McpServer {
   return server;
 }
 
-export async function runServer(): Promise<void> {
-  console.error("=== ODOO MCP SERVER STARTING ===");
-  console.error(`Node.js version: ${process.version}`);
+/**
+ * Dependencies for server bootstrap (for testing)
+ */
+export interface BootstrapDependencies {
+  /** Custom client initializer */
+  initClient?: () => Promise<OdooClient>;
+  /** Custom transport factory - returns any transport-like object for testing */
+  createTransport?: () => unknown;
+  /** Custom server factory */
+  createMcpServer?: (deps?: ServerDependencies) => McpServer;
+}
 
-  // Log Odoo-related environment variables
+/**
+ * Log environment variables (excluding password)
+ */
+export function logEnvironment(): void {
   console.error("Environment variables:");
   for (const [key, value] of Object.entries(process.env)) {
     if (key.startsWith("ODOO_")) {
@@ -180,13 +214,25 @@ export async function runServer(): Promise<void> {
       }
     }
   }
+}
+
+export async function runServer(deps?: BootstrapDependencies): Promise<void> {
+  console.error("=== ODOO MCP SERVER STARTING ===");
+  console.error(`Node.js version: ${process.version}`);
+
+  logEnvironment();
 
   // Initialize Odoo client
-  odooClient = await initializeClient();
+  const initClient = deps?.initClient ?? initializeClient;
+  odooClient = await initClient();
 
   // Create and start server
-  const server = createServer();
-  const transport = new StdioServerTransport();
+  const createMcpServer = deps?.createMcpServer ?? createServer;
+  const server = createMcpServer();
+
+  const createTransport =
+    deps?.createTransport ?? (() => new StdioServerTransport());
+  const transport = createTransport() as Parameters<typeof server.connect>[0];
 
   console.error("Starting MCP server with stdio transport...");
   await server.connect(transport);
