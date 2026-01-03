@@ -18,6 +18,10 @@ Eight new tools for exploring Odoo model structure without writing code. Discove
 
 Six new tools for real-world Odoo operations. Search tools (`find_record_by_name`, `search_records`) resolve human-readable names to IDs and perform validated searches. Access tool (`check_access`) verifies user permissions before operations. Action tools (`list_available_actions`, `execute_action`) discover and execute workflow transitions like confirming orders or posting invoices. Bulk tool (`bulk_operation`) performs atomic batch create/update/delete with validation and dry-run support.
 
+### Multi-Version Integration Testing (Jan 3)
+
+Comprehensive integration test suite with 99 tests covering all MCP tools against real Odoo instances. Docker Compose infrastructure supports Odoo 16, 17, and 18 via profiles. Tests run automatically in CI with a matrix strategy testing all three versions in parallel. Includes database lifecycle management with template cloning for test isolation.
+
 ---
 
 ## Detailed Changelog by Date
@@ -56,9 +60,21 @@ Six new tools for real-world Odoo operations. Search tools (`find_record_by_name
 - Add example SOPs and LICENSE
 - Update hero example to timesheet invoicing workflow
 
+#### Integration Testing
+
+- Add Docker Compose infrastructure for Odoo 16, 17, 18
+- Add integration test framework with database lifecycle management
+- Add 99 integration tests covering all MCP tools
+- Add CI workflow with matrix testing all Odoo versions
+
+#### Bug Fixes
+
+- Fix check_access_rights for Odoo 18 compatibility (use raise_exception=false)
+
 #### Chores
 
 - Restrict npm package to dist/ only (security improvement)
 - Update gitignore for local config files
 - Rename package to odoo-mcp for npm publication
 - Add secrets scanning to commit workflow
+- Add integration test and Docker scripts to package.json
