@@ -7,7 +7,8 @@ import { defineTool } from "./registry.js";
  */
 export const listDocsTool = defineTool({
   name: "list_docs",
-  description: "List available Odoo documentation (bundled + global + local)",
+  description:
+    "List available Odoo technical reference docs. These docs contain essential information for correctly calling Odoo methods via XML-RPC - consult them before complex operations. Sources: bundled (core ORM/domain syntax), global (~/.odoo-mcp/docs/), local (.odoo-mcp/docs/).",
   inputSchema: {},
   handler: async () => {
     const docs = listEntries("docs");
@@ -26,7 +27,8 @@ export const listDocsTool = defineTool({
  */
 export const readDocTool = defineTool({
   name: "read_doc",
-  description: "Read a specific documentation file by name",
+  description:
+    "Read a specific documentation file by name. Use this to learn correct Odoo API patterns before calling execute_method. Key docs: 'orm-methods' (CRUD/search syntax), 'orm-domains' (filter expressions), 'import-patterns' (bulk operations).",
   inputSchema: {
     name: z
       .string()
@@ -54,7 +56,8 @@ export const readDocTool = defineTool({
  */
 export const saveDocTool = defineTool({
   name: "save_doc",
-  description: "Save documentation to the local project (.odoo-mcp/docs/)",
+  description:
+    "Save documentation to the local project (.odoo-mcp/docs/). Use this to persist learned patterns about project-specific Odoo models, custom fields, or instance-specific behaviors for future reference.",
   inputSchema: {
     name: z.string().describe("Name for the doc (without .md extension)"),
     content: z.string().describe("Markdown content of the documentation"),

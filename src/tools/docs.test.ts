@@ -26,7 +26,7 @@ describe("docs tools", () => {
   describe("listDocsTool", () => {
     it("should have correct metadata", () => {
       expect(listDocsTool.name).toBe("list_docs");
-      expect(listDocsTool.description).toContain("documentation");
+      expect(listDocsTool.description).toContain("technical reference docs");
     });
 
     it("should list available docs", async () => {
