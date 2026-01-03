@@ -367,6 +367,76 @@ describe("OdooClient", () => {
 
       expect(result).toEqual({ error: "Model nonexistent.model not found" });
     });
+
+    it("returns error when search_read throws", async () => {
+      mockMethodCall
+        .mockResolvedValueOnce(42) // auth
+        .mockRejectedValueOnce(new Error("Access denied to ir.model"));
+
+      const client = new OdooClient({
+        url: "https://example.com",
+        db: "test",
+        username: "admin",
+        password: "secret",
+      });
+
+      await client.connect();
+      const result = await client.getModelInfo("res.partner");
+
+      expect(result).toEqual({ error: "Error: Access denied to ir.model" });
+    });
+  });
+
+  describe("getModelFields", () => {
+    it("returns field definitions", async () => {
+      const mockFields = {
+        name: { type: "char", string: "Name", required: true },
+        email: { type: "char", string: "Email", required: false },
+        active: { type: "boolean", string: "Active" },
+      };
+      mockMethodCall
+        .mockResolvedValueOnce(42) // auth
+        .mockResolvedValueOnce(mockFields); // fields_get
+
+      const client = new OdooClient({
+        url: "https://example.com",
+        db: "test",
+        username: "admin",
+        password: "secret",
+      });
+
+      await client.connect();
+      const result = await client.getModelFields("res.partner");
+
+      expect(result).toEqual(mockFields);
+      expect(mockMethodCall).toHaveBeenLastCalledWith("execute_kw", [
+        "test",
+        42,
+        "secret",
+        "res.partner",
+        "fields_get",
+        [],
+        {},
+      ]);
+    });
+
+    it("returns error when fields_get throws", async () => {
+      mockMethodCall
+        .mockResolvedValueOnce(42) // auth
+        .mockRejectedValueOnce(new Error("Model not accessible"));
+
+      const client = new OdooClient({
+        url: "https://example.com",
+        db: "test",
+        username: "admin",
+        password: "secret",
+      });
+
+      await client.connect();
+      const result = await client.getModelFields("private.model");
+
+      expect(result).toEqual({ error: "Error: Model not accessible" });
+    });
   });
 
   describe("searchRead", () => {
