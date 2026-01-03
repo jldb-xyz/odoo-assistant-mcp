@@ -9,9 +9,14 @@ export * from "./sops.js";
 import { listDocsTool, readDocTool, saveDocTool } from "./docs.js";
 import { executeMethodTool } from "./execute.js";
 import {
+  explainFieldTool,
+  getCreateRequirementsTool,
   getModelRelationsTool,
   getModelSchemaTool,
+  getRecordSampleTool,
+  getSelectionValuesTool,
   listModelsTool,
+  validateDomainTool,
 } from "./introspection.js";
 import {
   createToolRegistry,
@@ -30,6 +35,11 @@ export const allToolDefinitions: ToolDefinition[] = [
   listModelsTool,
   getModelSchemaTool,
   getModelRelationsTool,
+  getCreateRequirementsTool,
+  getSelectionValuesTool,
+  explainFieldTool,
+  getRecordSampleTool,
+  validateDomainTool,
   // Documentation tools
   listDocsTool,
   readDocTool,
