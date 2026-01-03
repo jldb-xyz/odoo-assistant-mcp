@@ -1,16 +1,12 @@
 export * from "./docs.js";
 export * from "./domain-utils.js";
-export * from "./employee.js";
 export * from "./execute.js";
-export * from "./holidays.js";
 export * from "./registry.js";
 export * from "./sops.js";
 
 // Import tool definitions for the default registry
 import { listDocsTool, readDocTool, saveDocTool } from "./docs.js";
-import { searchEmployeeTool } from "./employee.js";
 import { executeMethodTool } from "./execute.js";
-import { searchHolidaysTool } from "./holidays.js";
 import {
   createToolRegistry,
   type ToolDefinition,
@@ -22,10 +18,8 @@ import { listSopsTool, readSopTool, saveSopTool } from "./sops.js";
  * All built-in tool definitions (Odoo + Docs + SOPs)
  */
 export const allToolDefinitions: ToolDefinition[] = [
-  // Odoo tools
+  // Core Odoo tool
   executeMethodTool,
-  searchEmployeeTool,
-  searchHolidaysTool,
   // Documentation tools
   listDocsTool,
   readDocTool,
