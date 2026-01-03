@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "odoo": {
+      "command": "node",
+      "args": [
+        "dist/index.js"
+      ],
+      "env": {
+        "ODOO_URL": "https://nerve.jldb.xyz/",
+        "ODOO_DB": "prod",
+        "ODOO_USERNAME": "jonathan@jldb.co.uk",
+        "ODOO_PASSWORD": "5cb11d6134a5d646aad4ad66f82c38add9520f40"
+      }
+    }
+  }
+}
