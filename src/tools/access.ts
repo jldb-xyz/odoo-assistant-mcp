@@ -86,14 +86,19 @@ export async function checkAccess(
     let modelAccessError: string | undefined;
 
     try {
-      // check_access_rights returns True or raises AccessError
-      await client.execute<boolean>(
+      // Use raise_exception: false to get a boolean return value
+      // With raise_exception=false, returns True if access granted, False if denied
+      // (raise_exception=true would return None on success in Odoo 18, causing XML-RPC issues)
+      const accessResult = await client.execute<boolean>(
         input.model,
         "check_access_rights",
         [input.operation],
-        { raise_exception: true },
+        { raise_exception: false },
       );
-      hasModelAccess = true;
+      hasModelAccess = accessResult === true;
+      if (!hasModelAccess) {
+        modelAccessError = `Access denied: no ${input.operation} permission on ${input.model}`;
+      }
     } catch (error) {
       modelAccessError = String(error);
       hasModelAccess = false;
