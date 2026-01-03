@@ -3,11 +3,8 @@ import {
   ResourceTemplate,
 } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { z } from "zod";
 import { getClientOptions, loadConfig } from "./connection/config.js";
 import { OdooClient } from "./connection/odoo-client.js";
-// Docs & SOPs system
-import { listEntries, readEntry, saveEntry } from "./docs-system/index.js";
 // Resources
 import {
   handleModelResource,
@@ -16,7 +13,11 @@ import {
   handleSearchResource,
 } from "./resources/odoo-resources.js";
 // Tools
-import { createOdooToolRegistry, type ToolRegistry } from "./tools/index.js";
+import {
+  createOdooToolRegistry,
+  type ToolRegistry,
+  type ToolResult,
+} from "./tools/index.js";
 import type { IOdooClient } from "./types/index.js";
 
 // Global client instance
@@ -75,7 +76,26 @@ export function createServer(deps?: ServerDependencies): McpServer {
   // Use provided registry or create default Odoo tool registry
   const toolRegistry = deps?.toolRegistry ?? createOdooToolRegistry();
 
-  // ===== Register Odoo Tools from Registry =====
+  /**
+   * Format a ToolResult for MCP response.
+   * If result.text exists, return it directly as markdown.
+   * Otherwise, JSON.stringify the result.
+   */
+  function formatToolResult(result: ToolResult): string {
+    // If the result contains a text field, return it directly (for markdown content)
+    if (
+      result.result &&
+      typeof result.result === "object" &&
+      "text" in result.result &&
+      typeof (result.result as { text: unknown }).text === "string"
+    ) {
+      return (result.result as { text: string }).text;
+    }
+    // Otherwise, return the full result as JSON
+    return JSON.stringify(result, null, 2);
+  }
+
+  // ===== Register All Tools from Registry =====
   for (const tool of toolRegistry.getAll()) {
     server.registerTool(
       tool.name,
@@ -86,166 +106,16 @@ export function createServer(deps?: ServerDependencies): McpServer {
       async (input) => {
         const result = await tool.handler(getClientFn(), input);
         return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+          content: [{ type: "text", text: formatToolResult(result) }],
         };
       },
     );
   }
 
-  // ===== Documentation Tools =====
-
-  server.tool(
-    "list_docs",
-    "List available Odoo documentation (bundled + global + local)",
-    {},
-    async () => {
-      const docs = listEntries("docs");
-      const formatted = docs.map((d) => `- ${d.name} (${d.source})`).join("\n");
-      return {
-        content: [
-          {
-            type: "text",
-            text: `# Available Documentation\n\n${formatted || "No docs found."}`,
-          },
-        ],
-      };
-    },
-  );
-
-  server.tool(
-    "read_doc",
-    "Read a specific documentation file by name",
-    {
-      name: z
-        .string()
-        .describe("Name of the doc to read (without .md extension)"),
-    },
-    async ({ name }) => {
-      const doc = readEntry("docs", name);
-      if (!doc) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Doc "${name}" not found. Use list_docs to see available documentation.`,
-            },
-          ],
-        };
-      }
-      return {
-        content: [
-          {
-            type: "text",
-            text: `# ${name}\n\n_Source: ${doc.source}_\n\n${doc.content}`,
-          },
-        ],
-      };
-    },
-  );
-
-  server.tool(
-    "save_doc",
-    "Save documentation to the local project (.odoo-mcp/docs/)",
-    {
-      name: z.string().describe("Name for the doc (without .md extension)"),
-      content: z.string().describe("Markdown content of the documentation"),
-    },
-    async ({ name, content }) => {
-      const result = saveEntry("docs", name, content);
-      if (result.success) {
-        return {
-          content: [
-            { type: "text", text: `Saved doc "${name}" to ${result.path}` },
-          ],
-        };
-      }
-      return {
-        content: [
-          { type: "text", text: `Failed to save doc: ${result.error}` },
-        ],
-      };
-    },
-  );
-
-  // ===== SOP Tools =====
-
-  server.tool(
-    "list_sops",
-    "List available Standard Operating Procedures (global + local)",
-    {},
-    async () => {
-      const sops = listEntries("sops");
-      const formatted = sops.map((s) => `- ${s.name} (${s.source})`).join("\n");
-      return {
-        content: [
-          {
-            type: "text",
-            text: `# Available SOPs\n\n${formatted || "No SOPs found. Use save_sop to create one."}`,
-          },
-        ],
-      };
-    },
-  );
-
-  server.tool(
-    "read_sop",
-    "Read a specific SOP by name",
-    {
-      name: z
-        .string()
-        .describe("Name of the SOP to read (without .md extension)"),
-    },
-    async ({ name }) => {
-      const sop = readEntry("sops", name);
-      if (!sop) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `SOP "${name}" not found. Use list_sops to see available procedures.`,
-            },
-          ],
-        };
-      }
-      return {
-        content: [
-          {
-            type: "text",
-            text: `# SOP: ${name}\n\n_Source: ${sop.source}_\n\n${sop.content}`,
-          },
-        ],
-      };
-    },
-  );
-
-  server.tool(
-    "save_sop",
-    "Save a Standard Operating Procedure to local project (.odoo-mcp/sops/)",
-    {
-      name: z.string().describe("Name for the SOP (without .md extension)"),
-      content: z.string().describe("Markdown content of the procedure"),
-    },
-    async ({ name, content }) => {
-      const result = saveEntry("sops", name, content);
-      if (result.success) {
-        return {
-          content: [
-            { type: "text", text: `Saved SOP "${name}" to ${result.path}` },
-          ],
-        };
-      }
-      return {
-        content: [
-          { type: "text", text: `Failed to save SOP: ${result.error}` },
-        ],
-      };
-    },
-  );
-
   // ===== Register Resources =====
 
   // Register static resource
-  server.resource(
+  server.registerResource(
     "odoo-models",
     "odoo://models",
     { description: "List all available models in the Odoo system" },
@@ -253,7 +123,7 @@ export function createServer(deps?: ServerDependencies): McpServer {
   );
 
   // Register dynamic resources with templates
-  server.resource(
+  server.registerResource(
     "odoo-model",
     new ResourceTemplate("odoo://model/{model_name}", { list: undefined }),
     {
@@ -266,7 +136,7 @@ export function createServer(deps?: ServerDependencies): McpServer {
     },
   );
 
-  server.resource(
+  server.registerResource(
     "odoo-record",
     new ResourceTemplate("odoo://record/{model_name}/{record_id}", {
       list: undefined,
@@ -279,7 +149,7 @@ export function createServer(deps?: ServerDependencies): McpServer {
     },
   );
 
-  server.resource(
+  server.registerResource(
     "odoo-search",
     new ResourceTemplate("odoo://search/{model_name}/{+domain}", {
       list: undefined,
