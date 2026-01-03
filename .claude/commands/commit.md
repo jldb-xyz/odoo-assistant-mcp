@@ -24,6 +24,7 @@ yarn lint
 - Prefer `Record<SpecificUnion, T>` over `Record<string, T>`
 - Extract shared types to `src/types/`
 - Use type guards over type assertions
+- No secrets or credentials in code (see Phase 2)
 
 ### Phase 2: Change Analysis
 
@@ -34,6 +35,31 @@ git diff                      # Unstaged changes
 git diff --cached             # Staged changes (if any)
 git log --oneline -10         # Recent commit style reference
 ```
+
+**Secrets check (MANDATORY):**
+
+Before staging any files, scan all changes for leaked secrets:
+- API keys, tokens, passwords, private keys
+- Connection strings with credentials
+- `.env` file contents accidentally copied into code
+- Hardcoded credentials in config files
+- OAuth secrets, JWT signing keys
+- Cloud provider credentials (AWS, GCP, Azure)
+- MCP server configurations with embedded credentials
+
+**If secrets found:**
+1. **STOP** - Do not commit under any circumstances
+2. **Remove** the secret from the code immediately
+3. **Replace** with environment variable reference or config lookup
+4. **Warn user** that the secret was exposed in their working copy
+5. **Suggest** rotating the credential if it was ever committed previously
+
+**Files to always scrutinize:**
+- `*.env*` files (should never be committed)
+- Config files (`config.json`, `settings.*`, etc.)
+- MCP configurations (`mcp.json`, `claude_desktop_config.json`, `.mcp/`)
+- Test fixtures and mocks (often contain real credentials by mistake)
+- CI/CD configuration files
 
 **Group changes by:**
 1. **Feature/Domain** - Related functionality (e.g., "tracker", "schedule", "events")
@@ -121,6 +147,8 @@ Running lint... ✅ Pass
 
 Phase 2: Change Analysis
 ━━━━━━━━━━━━━━━━━━━━━━━
+Scanning for secrets... ✅ No secrets detected
+
 Modified files grouped:
 
 Group 1: Event system types
