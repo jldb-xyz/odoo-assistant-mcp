@@ -76,7 +76,9 @@ describe("docs tools", () => {
         content: "# Test Document\n\nThis is test content.",
       });
 
-      const result = await readDocTool.handler(mockClient, { name: "test-doc" });
+      const result = await readDocTool.handler(mockClient, {
+        name: "test-doc",
+      });
 
       expect(result.success).toBe(true);
       expect((result.result as { text: string }).text).toContain("# test-doc");
@@ -149,9 +151,6 @@ describe("docs tools", () => {
 
 describe("docs tools integration", () => {
   let tempDir: string;
-  let originalListEntries: typeof docsSystem.listEntries;
-  let originalReadEntry: typeof docsSystem.readEntry;
-  let originalSaveEntry: typeof docsSystem.saveEntry;
 
   beforeEach(() => {
     // Restore real implementations for integration tests

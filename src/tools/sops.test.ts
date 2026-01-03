@@ -26,7 +26,9 @@ describe("sops tools", () => {
   describe("listSopsTool", () => {
     it("should have correct metadata", () => {
       expect(listSopsTool.name).toBe("list_sops");
-      expect(listSopsTool.description).toContain("Standard Operating Procedures");
+      expect(listSopsTool.description).toContain(
+        "Standard Operating Procedures",
+      );
     });
 
     it("should list available SOPs", async () => {
@@ -77,7 +79,9 @@ describe("sops tools", () => {
         content: "## Steps\n\n1. Do this\n2. Do that",
       });
 
-      const result = await readSopTool.handler(mockClient, { name: "test-sop" });
+      const result = await readSopTool.handler(mockClient, {
+        name: "test-sop",
+      });
 
       expect(result.success).toBe(true);
       expect((result.result as { text: string }).text).toContain(
@@ -181,7 +185,11 @@ describe("sops tools integration", () => {
     expect(saveResult.success).toBe(true);
 
     // Read it back
-    const readResult = realDocsSystem.readEntry("sops", "test-procedure", config);
+    const readResult = realDocsSystem.readEntry(
+      "sops",
+      "test-procedure",
+      config,
+    );
     expect(readResult).not.toBeNull();
     expect(readResult?.content).toContain("Test Procedure");
 

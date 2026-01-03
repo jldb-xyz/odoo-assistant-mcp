@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { MockClientBuilder } from "./test-utils/mock-client.js";
-import {
-  createToolRegistry,
-  defineTool,
-  type ToolRegistry,
-} from "./tools/registry.js";
 import { createServer, type ServerDependencies } from "./server.js";
+import { MockClientBuilder } from "./test-utils/mock-client.js";
+import { createToolRegistry, defineTool } from "./tools/registry.js";
 
 describe("server", () => {
   describe("createServer", () => {
@@ -82,8 +78,6 @@ describe("server", () => {
       const client = new MockClientBuilder().build();
       const registry = createToolRegistry();
 
-      let capturedHandler: ((input: unknown) => Promise<unknown>) | undefined;
-
       const textTool = defineTool({
         name: "text_result_tool",
         description: "Returns text result",
@@ -134,9 +128,7 @@ describe("server", () => {
   describe("resource integration", () => {
     it("should register models resource", () => {
       const client = new MockClientBuilder()
-        .withModels([
-          { model: "res.partner", name: "Contact" },
-        ])
+        .withModels([{ model: "res.partner", name: "Contact" }])
         .build();
       const registry = createToolRegistry();
 
@@ -207,15 +199,7 @@ describe("server", () => {
 
   describe("dependency injection", () => {
     it("should use injected client for tool handlers", async () => {
-      let clientCalled = false;
       const client = new MockClientBuilder().build();
-
-      // Override execute to track calls
-      const originalExecute = client.execute;
-      client.execute = async (...args) => {
-        clientCalled = true;
-        return originalExecute.apply(client, args);
-      };
 
       const registry = createToolRegistry();
       const trackingTool = defineTool({
@@ -246,9 +230,7 @@ describe("server", () => {
 
     it("should use injected client for resource handlers", () => {
       const mockModels = [{ model: "test.model", name: "Test" }];
-      const client = new MockClientBuilder()
-        .withModels(mockModels)
-        .build();
+      const client = new MockClientBuilder().withModels(mockModels).build();
 
       const registry = createToolRegistry();
       const deps: ServerDependencies = {
