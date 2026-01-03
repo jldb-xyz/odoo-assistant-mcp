@@ -1,12 +1,18 @@
 export * from "./docs.js";
 export * from "./domain-utils.js";
 export * from "./execute.js";
+export * from "./introspection.js";
 export * from "./registry.js";
 export * from "./sops.js";
 
 // Import tool definitions for the default registry
 import { listDocsTool, readDocTool, saveDocTool } from "./docs.js";
 import { executeMethodTool } from "./execute.js";
+import {
+  getModelRelationsTool,
+  getModelSchemaTool,
+  listModelsTool,
+} from "./introspection.js";
 import {
   createToolRegistry,
   type ToolDefinition,
@@ -20,6 +26,10 @@ import { listSopsTool, readSopTool, saveSopTool } from "./sops.js";
 export const allToolDefinitions: ToolDefinition[] = [
   // Core Odoo tool
   executeMethodTool,
+  // Model introspection tools
+  listModelsTool,
+  getModelSchemaTool,
+  getModelRelationsTool,
   // Documentation tools
   listDocsTool,
   readDocTool,
