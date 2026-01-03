@@ -29,7 +29,7 @@ Add a `.mcp.json` file to your project:
   "mcpServers": {
     "odoo": {
       "command": "npx",
-      "args": ["@jldb-xyz/odoo-mcp"],
+      "args": ["odoo-mcp"],
       "env": {
         "ODOO_URL": "https://your-instance.odoo.com",
         "ODOO_DB": "your_database",
@@ -118,6 +118,8 @@ Start with the tasks you do repeatedly:
 - "Generate the weekly inventory report"
 
 Every SOP you save makes your whole team faster. They compound.
+
+**Need inspiration?** Check out the [example SOPs](../examples/sops/) to see real templates you can adapt for your workflows.
 
 ---
 

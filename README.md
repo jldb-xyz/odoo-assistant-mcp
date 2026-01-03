@@ -27,7 +27,7 @@ Add to your project's `.mcp.json`:
   "mcpServers": {
     "odoo": {
       "command": "npx",
-      "args": ["@jldb-xyz/odoo-mcp"],
+      "args": ["odoo-mcp"],
       "env": {
         "ODOO_URL": "https://your-instance.odoo.com",
         "ODOO_DB": "your_database",
@@ -49,6 +49,8 @@ Start Claude Code. You're connected.
 - Building your SOP library
 - Troubleshooting
 
+**[Example SOPs](examples/sops/)** — Ready-to-use templates to get you started.
+
 ## What You Can Do
 
 - **Query anything** — Partners, invoices, products, stock levels, any of Odoo's 500+ models
@@ -66,6 +68,7 @@ Start Claude Code. You're connected.
 ## Links
 
 - [User Guide](docs/USER_GUIDE.md)
+- [Example SOPs](examples/sops/)
 - [Odoo External API](https://www.odoo.com/documentation/18.0/developer/reference/external_api.html)
 - [Model Context Protocol](https://modelcontextprotocol.io)
 
