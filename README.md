@@ -1,5 +1,11 @@
 # Odoo MCP Server
 
+[![CI](https://github.com/jldb-xyz/odoo-assistant-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/jldb-xyz/odoo-assistant-mcp/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/odoo-mcp)](https://www.npmjs.com/package/odoo-mcp)
+[![Odoo 16](https://github.com/jldb-xyz/odoo-assistant-mcp/actions/workflows/odoo-16.yml/badge.svg)](https://github.com/jldb-xyz/odoo-assistant-mcp/actions/workflows/odoo-16.yml)
+[![Odoo 17](https://github.com/jldb-xyz/odoo-assistant-mcp/actions/workflows/odoo-17.yml/badge.svg)](https://github.com/jldb-xyz/odoo-assistant-mcp/actions/workflows/odoo-17.yml)
+[![Odoo 18](https://github.com/jldb-xyz/odoo-assistant-mcp/actions/workflows/odoo-18.yml/badge.svg)](https://github.com/jldb-xyz/odoo-assistant-mcp/actions/workflows/odoo-18.yml)
+
 **Talk to your Odoo ERP in plain English.**
 
 An MCP server that connects Claude to your Odoo instance. Query data, create records, and build reusable workflows—all through natural conversation.
@@ -61,9 +67,20 @@ Start Claude Code. You're connected.
 
 ## Requirements
 
-- Odoo 14+ with XML-RPC enabled (default)
+- Odoo 16, 17, or 18 with XML-RPC enabled (default)
 - API key (Custom plans only—not available on One App Free or Standard)
 - Node.js 18+
+
+### Tested Versions
+
+| Odoo Version | Status | Notes |
+|--------------|--------|-------|
+| 18 | ✅ Tested | Latest version, full support |
+| 17 | ✅ Tested | Full support |
+| 16 | ✅ Tested | Full support |
+| 14-15 | ⚠️ Untested | Should work (same XML-RPC API) |
+
+All 99 integration tests pass on Odoo 16, 17, and 18.
 
 ## Links
 
