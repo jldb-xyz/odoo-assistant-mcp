@@ -40,5 +40,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Reference projects
-references/
+# Test artifacts
+.test-db-name
+references/.test-db-name
