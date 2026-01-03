@@ -2,9 +2,13 @@
 
 [![CI](https://github.com/jldb-xyz/odoo-assistant-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/jldb-xyz/odoo-assistant-mcp/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/odoo-mcp)](https://www.npmjs.com/package/odoo-mcp)
+
+[![Odoo 14](https://github.com/jldb-xyz/odoo-assistant-mcp/actions/workflows/odoo-14.yml/badge.svg)](https://github.com/jldb-xyz/odoo-assistant-mcp/actions/workflows/odoo-14.yml)
+[![Odoo 15](https://github.com/jldb-xyz/odoo-assistant-mcp/actions/workflows/odoo-15.yml/badge.svg)](https://github.com/jldb-xyz/odoo-assistant-mcp/actions/workflows/odoo-15.yml)
 [![Odoo 16](https://github.com/jldb-xyz/odoo-assistant-mcp/actions/workflows/odoo-16.yml/badge.svg)](https://github.com/jldb-xyz/odoo-assistant-mcp/actions/workflows/odoo-16.yml)
 [![Odoo 17](https://github.com/jldb-xyz/odoo-assistant-mcp/actions/workflows/odoo-17.yml/badge.svg)](https://github.com/jldb-xyz/odoo-assistant-mcp/actions/workflows/odoo-17.yml)
 [![Odoo 18](https://github.com/jldb-xyz/odoo-assistant-mcp/actions/workflows/odoo-18.yml/badge.svg)](https://github.com/jldb-xyz/odoo-assistant-mcp/actions/workflows/odoo-18.yml)
+[![Odoo 19](https://github.com/jldb-xyz/odoo-assistant-mcp/actions/workflows/odoo-19.yml/badge.svg)](https://github.com/jldb-xyz/odoo-assistant-mcp/actions/workflows/odoo-19.yml)
 
 **Talk to your Odoo ERP in plain English.**
 
@@ -67,7 +71,7 @@ Start Claude Code. You're connected.
 
 ## Requirements
 
-- Odoo 16, 17, or 18 with XML-RPC enabled (default)
+- Odoo 14+ with XML-RPC enabled (default)
 - API key (Custom plans only—not available on One App Free or Standard)
 - Node.js 18+
 
@@ -75,12 +79,14 @@ Start Claude Code. You're connected.
 
 | Odoo Version | Status | Notes |
 |--------------|--------|-------|
-| 18 | ✅ Tested | Latest version, full support |
+| 19 | ✅ Tested | Latest version (2025), full support |
+| 18 | ✅ Tested | Full support |
 | 17 | ✅ Tested | Full support |
 | 16 | ✅ Tested | Full support |
-| 14-15 | ⚠️ Untested | Should work (same XML-RPC API) |
+| 15 | ✅ Tested | Full support |
+| 14 | ✅ Tested | Full support |
 
-All 99 integration tests pass on Odoo 16, 17, and 18.
+All 99 integration tests run against each version in CI.
 
 ## Links
 

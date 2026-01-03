@@ -1,0 +1,15 @@
+name: Odoo 15
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  integration-test:
+    uses: ./.github/workflows/integration-test.yml
+    with:
+      odoo-version: "15"
+      docker-profile: "--profile odoo15"
+      port: "8015"

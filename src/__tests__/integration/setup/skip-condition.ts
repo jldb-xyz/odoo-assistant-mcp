@@ -4,12 +4,15 @@ import { join } from "node:path";
 
 /**
  * Odoo version configuration
- * Set ODOO_VERSION env var to select version (16, 17, or 18)
+ * Set ODOO_VERSION env var to select version (14, 15, 16, 17, 18, or 19)
  */
 export const ODOO_VERSIONS = {
+  14: { port: 8014, image: "odoo:14", template: "odoo_template_14" },
+  15: { port: 8015, image: "odoo:15", template: "odoo_template_15" },
   16: { port: 8016, image: "odoo:16", template: "odoo_template_16" },
   17: { port: 8017, image: "odoo:17", template: "odoo_template_17" },
   18: { port: 8018, image: "odoo:18", template: "odoo_template_18" },
+  19: { port: 8019, image: "odoo:19", template: "odoo_template_19" },
 } as const;
 
 export type OdooVersion = keyof typeof ODOO_VERSIONS;
