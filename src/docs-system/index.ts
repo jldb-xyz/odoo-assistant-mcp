@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
-import * as path from "node:path";
 import * as os from "node:os";
+import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -18,25 +18,44 @@ export interface DocContent {
   content: string;
 }
 
+export interface PathConfig {
+  bundledDir?: string;
+  globalDir?: string;
+  localDir?: string;
+}
+
+/**
+ * Get default paths for docs/SOPs
+ */
+function getDefaultPaths(type: "docs" | "sops"): Required<PathConfig> {
+  return {
+    bundledDir: path.join(__dirname, "..", "docs"),
+    globalDir: path.join(os.homedir(), ".odoo-mcp", type),
+    localDir: path.join(process.cwd(), ".odoo-mcp", type),
+  };
+}
+
 /**
  * Get all doc/SOP directories in priority order (lowest to highest)
  */
-function getDocPaths(type: "docs" | "sops"): { source: DocEntry["source"]; dir: string }[] {
+function getDocPaths(
+  type: "docs" | "sops",
+  config?: PathConfig,
+): { source: DocEntry["source"]; dir: string }[] {
   const paths: { source: DocEntry["source"]; dir: string }[] = [];
+  const defaults = getDefaultPaths(type);
+  const cfg = { ...defaults, ...config };
 
   // Bundled docs (only for docs, not SOPs)
   if (type === "docs") {
-    const bundledPath = path.join(__dirname, "..", "docs");
-    paths.push({ source: "bundled", dir: bundledPath });
+    paths.push({ source: "bundled", dir: cfg.bundledDir });
   }
 
   // Global (~/.odoo-mcp/docs or ~/.odoo-mcp/sops)
-  const globalPath = path.join(os.homedir(), ".odoo-mcp", type);
-  paths.push({ source: "global", dir: globalPath });
+  paths.push({ source: "global", dir: cfg.globalDir });
 
   // Local (./.odoo-mcp/docs or ./.odoo-mcp/sops)
-  const localPath = path.join(process.cwd(), ".odoo-mcp", type);
-  paths.push({ source: "local", dir: localPath });
+  paths.push({ source: "local", dir: cfg.localDir });
 
   return paths;
 }
@@ -44,8 +63,11 @@ function getDocPaths(type: "docs" | "sops"): { source: DocEntry["source"]; dir: 
 /**
  * List all available docs or SOPs, with higher priority sources overriding lower
  */
-export function listEntries(type: "docs" | "sops"): DocEntry[] {
-  const paths = getDocPaths(type);
+export function listEntries(
+  type: "docs" | "sops",
+  config?: PathConfig,
+): DocEntry[] {
+  const paths = getDocPaths(type, config);
   const entriesMap = new Map<string, DocEntry>();
 
   for (const { source, dir } of paths) {
@@ -68,14 +90,20 @@ export function listEntries(type: "docs" | "sops"): DocEntry[] {
     }
   }
 
-  return Array.from(entriesMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  return Array.from(entriesMap.values()).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
 }
 
 /**
  * Read a specific doc or SOP by name
  */
-export function readEntry(type: "docs" | "sops", name: string): DocContent | null {
-  const paths = getDocPaths(type);
+export function readEntry(
+  type: "docs" | "sops",
+  name: string,
+  config?: PathConfig,
+): DocContent | null {
+  const paths = getDocPaths(type, config);
 
   // Search in reverse order (local first, then global, then bundled)
   for (const { source, dir } of [...paths].reverse()) {
@@ -99,9 +127,11 @@ export function readEntry(type: "docs" | "sops", name: string): DocContent | nul
 export function saveEntry(
   type: "docs" | "sops",
   name: string,
-  content: string
+  content: string,
+  config?: PathConfig,
 ): { success: boolean; path?: string; error?: string } {
-  const localDir = path.join(process.cwd(), ".odoo-mcp", type);
+  const defaults = getDefaultPaths(type);
+  const localDir = config?.localDir ?? defaults.localDir;
 
   try {
     // Ensure directory exists
@@ -121,13 +151,18 @@ export function saveEntry(
  */
 export function deleteEntry(
   type: "docs" | "sops",
-  name: string
+  name: string,
+  config?: PathConfig,
 ): { success: boolean; error?: string } {
-  const localDir = path.join(process.cwd(), ".odoo-mcp", type);
+  const defaults = getDefaultPaths(type);
+  const localDir = config?.localDir ?? defaults.localDir;
   const filePath = path.join(localDir, `${name}.md`);
 
   if (!fs.existsSync(filePath)) {
-    return { success: false, error: `${type.slice(0, -1)} "${name}" not found in local directory` };
+    return {
+      success: false,
+      error: `${type.slice(0, -1)} "${name}" not found in local directory`,
+    };
   }
 
   try {
