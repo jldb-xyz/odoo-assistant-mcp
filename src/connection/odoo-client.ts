@@ -1,11 +1,13 @@
-import { XmlRpcClient } from "./xmlrpc.js";
 import type {
+  Domain,
+  IOdooClient,
   OdooConfig,
   OdooConnection,
-  Domain,
-  OdooModelInfo,
   OdooFieldDef,
+  OdooModelInfo,
+  SearchReadOptions,
 } from "../types/index.js";
+import { XmlRpcClient } from "./xmlrpc.js";
 
 export interface OdooClientOptions {
   timeout?: number;
@@ -15,7 +17,7 @@ export interface OdooClientOptions {
 /**
  * Odoo XML-RPC client for authentication and method execution
  */
-export class OdooClient {
+export class OdooClient implements IOdooClient {
   private config: OdooConfig;
   private options: Required<OdooClientOptions>;
   private connection: OdooConnection | null = null;
@@ -71,7 +73,7 @@ export class OdooClient {
     try {
       const uid = await this.commonClient.methodCall<number | false>(
         "authenticate",
-        [this.config.db, this.config.username, this.config.password, {}]
+        [this.config.db, this.config.username, this.config.password, {}],
       );
 
       if (uid === false || uid === 0) {
@@ -106,7 +108,7 @@ export class OdooClient {
     model: string,
     method: string,
     args: unknown[] = [],
-    kwargs: Record<string, unknown> = {}
+    kwargs: Record<string, unknown> = {},
   ): Promise<T> {
     const conn = this.ensureConnected();
 
@@ -130,12 +132,14 @@ export class OdooClient {
     error?: string;
   }> {
     try {
-      const modelIds = await this.execute<number[]>("ir.model", "search", [
-        [],
-      ]);
+      const modelIds = await this.execute<number[]>("ir.model", "search", [[]]);
 
       if (!modelIds.length) {
-        return { model_names: [], models_details: {}, error: "No models found" };
+        return {
+          model_names: [],
+          models_details: {},
+          error: "No models found",
+        };
       }
 
       const records = await this.execute<
@@ -159,14 +163,14 @@ export class OdooClient {
    * Get information about a specific model
    */
   async getModelInfo(
-    modelName: string
+    modelName: string,
   ): Promise<OdooModelInfo | { error: string }> {
     try {
       const result = await this.execute<OdooModelInfo[]>(
         "ir.model",
         "search_read",
         [[["model", "=", modelName]]],
-        { fields: ["name", "model"] }
+        { fields: ["name", "model"] },
       );
 
       if (!result.length) {
@@ -188,12 +192,12 @@ export class OdooClient {
    * Get field definitions for a model
    */
   async getModelFields(
-    modelName: string
+    modelName: string,
   ): Promise<Record<string, OdooFieldDef> | { error: string }> {
     try {
       return await this.execute<Record<string, OdooFieldDef>>(
         modelName,
-        "fields_get"
+        "fields_get",
       );
     } catch (error) {
       return { error: String(error) };
@@ -206,12 +210,7 @@ export class OdooClient {
   async searchRead(
     modelName: string,
     domain: Domain,
-    options: {
-      fields?: string[];
-      offset?: number;
-      limit?: number;
-      order?: string;
-    } = {}
+    options: SearchReadOptions = {},
   ): Promise<unknown[]> {
     const kwargs: Record<string, unknown> = {};
     if (options.fields) kwargs.fields = options.fields;
@@ -228,7 +227,7 @@ export class OdooClient {
   async readRecords(
     modelName: string,
     ids: number[],
-    fields?: string[]
+    fields?: string[],
   ): Promise<unknown[]> {
     const kwargs: Record<string, unknown> = {};
     if (fields) kwargs.fields = fields;
