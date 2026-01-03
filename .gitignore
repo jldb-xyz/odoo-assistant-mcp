@@ -18,6 +18,7 @@ coverage/
 
 # Config with secrets
 odoo_config.json
+.mcp.json
 
 # IDE
 .idea/
