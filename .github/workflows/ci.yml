@@ -41,3 +41,61 @@ jobs:
 
       - name: Build
         run: yarn build
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: build
+
+    strategy:
+      fail-fast: false
+      matrix:
+        odoo-version: [16, 17, 18]
+        include:
+          - odoo-version: 16
+            docker-profile: "--profile odoo16"
+            port: 8016
+          - odoo-version: 17
+            docker-profile: ""
+            port: 8017
+          - odoo-version: 18
+            docker-profile: "--profile odoo18"
+            port: 8018
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build
+        run: yarn build
+
+      - name: Start Odoo ${{ matrix.odoo-version }} with Docker Compose
+        run: docker compose ${{ matrix.docker-profile }} up -d
+
+      - name: Wait for Odoo ${{ matrix.odoo-version }} to be ready
+        run: ./scripts/wait-for-odoo.sh localhost ${{ matrix.port }} 180
+        timeout-minutes: 5
+
+      - name: Run integration tests against Odoo ${{ matrix.odoo-version }}
+        run: yarn test:integration:${{ matrix.odoo-version }}
+        env:
+          ODOO_VERSION: ${{ matrix.odoo-version }}
+
+      - name: Show Docker logs on failure
+        if: failure()
+        run: docker compose ${{ matrix.docker-profile }} logs
+
+      - name: Stop Docker Compose
+        if: always()
+        run: docker compose ${{ matrix.docker-profile }} down -v
