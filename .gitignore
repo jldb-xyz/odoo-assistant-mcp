@@ -20,6 +20,10 @@ coverage/
 odoo_config.json
 .mcp.json
 
+# npm pack artifacts
+*.tgz
+package/
+
 # IDE
 .idea/
 .vscode/

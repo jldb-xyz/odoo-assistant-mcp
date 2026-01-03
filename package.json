@@ -15,6 +15,9 @@
   "publishConfig": {
     "access": "public"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc && mkdir -p dist/docs && cp src/docs/*.md dist/docs/",
     "dev": "swc src -d dist --watch --source-maps",
