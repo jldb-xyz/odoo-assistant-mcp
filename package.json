@@ -1,11 +1,19 @@
 {
-  "name": "odoo-mcp",
+  "name": "@jldb-xyz/odoo-mcp",
   "version": "1.0.0",
+  "description": "MCP server for Odoo ERP integration",
   "type": "module",
   "packageManager": "yarn@4.9.2",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": "./dist/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jldb-xyz/odoo-assistant-mcp.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "scripts": {
     "build": "tsc && mkdir -p dist/docs && cp src/docs/*.md dist/docs/",
     "dev": "swc src -d dist --watch --source-maps",
@@ -18,7 +26,10 @@
     "test:coverage": "vitest run --coverage",
     "lint": "biome check src/",
     "lint:fix": "biome check --write src/",
-    "format": "biome format --write src/"
+    "format": "biome format --write src/",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "yarn build && changeset publish"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
@@ -27,6 +38,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.10",
+    "@changesets/changelog-github": "^0.5.2",
+    "@changesets/cli": "^2.29.8",
     "@swc/cli": "^0.6.0",
     "@swc/core": "^1.10.0",
     "@types/node": "^22.0.0",
