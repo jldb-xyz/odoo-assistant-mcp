@@ -73,7 +73,7 @@ Start Claude Code. You're connected.
 
 - Odoo 14+ with XML-RPC enabled (default)
 - API key (Custom plans only—not available on One App Free or Standard)
-- Node.js 18+
+- Node.js 18+ 
 
 ### Tested Versions
 
