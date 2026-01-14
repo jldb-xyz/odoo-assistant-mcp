@@ -16,6 +16,8 @@ coverage/
 !.yarn/versions
 .pnp.*
 
+example_import
+
 # Config with secrets
 odoo_config.json
 .mcp.json
