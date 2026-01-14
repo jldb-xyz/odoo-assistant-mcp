@@ -3,6 +3,7 @@ export * from "./actions.js";
 export * from "./bulk.js";
 export * from "./docs.js";
 export * from "./domain-utils.js";
+export * from "./excel.js";
 export * from "./execute.js";
 export * from "./introspection.js";
 export * from "./registry.js";
@@ -14,6 +15,7 @@ import { checkAccessTool } from "./access.js";
 import { executeActionTool, listAvailableActionsTool } from "./actions.js";
 import { bulkOperationTool } from "./bulk.js";
 import { listDocsTool, readDocTool, saveDocTool } from "./docs.js";
+import { convertExcelTool, listExcelSheetsTool } from "./excel.js";
 import { executeMethodTool } from "./execute.js";
 import {
   explainFieldTool,
@@ -66,6 +68,9 @@ export const allToolDefinitions: ToolDefinition[] = [
   listSopsTool,
   readSopTool,
   saveSopTool,
+  // File conversion tools
+  listExcelSheetsTool,
+  convertExcelTool,
 ];
 
 /**
