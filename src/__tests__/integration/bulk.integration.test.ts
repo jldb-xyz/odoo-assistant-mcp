@@ -54,7 +54,8 @@ describe(`bulk tools - Odoo ${getOdooVersion()}`, () => {
       });
 
       expect(result.success).toBe(true);
-      const data = result.result!;
+      expect(result.result).toBeDefined();
+      const data = result.result as NonNullable<typeof result.result>;
 
       expect(data.model).toBe("res.partner");
       expect(data.operation).toBe("create");
@@ -79,7 +80,8 @@ describe(`bulk tools - Odoo ${getOdooVersion()}`, () => {
       });
 
       expect(result.success).toBe(true);
-      const data = result.result!;
+      expect(result.result).toBeDefined();
+      const data = result.result as NonNullable<typeof result.result>;
 
       expect(data.validation_only).toBe(true);
       expect(data.would_affect).toBe(2);
@@ -167,7 +169,8 @@ describe(`bulk tools - Odoo ${getOdooVersion()}`, () => {
       });
 
       expect(result.success).toBe(true);
-      const data = result.result!;
+      expect(result.result).toBeDefined();
+      const data = result.result as NonNullable<typeof result.result>;
 
       expect(data.model).toBe("res.partner");
       expect(data.operation).toBe("write");
@@ -197,7 +200,8 @@ describe(`bulk tools - Odoo ${getOdooVersion()}`, () => {
       });
 
       expect(result.success).toBe(true);
-      const data = result.result!;
+      expect(result.result).toBeDefined();
+      const data = result.result as NonNullable<typeof result.result>;
 
       expect(data.validation_only).toBe(true);
       expect(data.would_affect).toBe(updateTestIds.length);
@@ -250,7 +254,8 @@ describe(`bulk tools - Odoo ${getOdooVersion()}`, () => {
       });
 
       expect(result.success).toBe(true);
-      const data = result.result!;
+      expect(result.result).toBeDefined();
+      const data = result.result as NonNullable<typeof result.result>;
 
       expect(data.model).toBe("res.partner");
       expect(data.operation).toBe("unlink");
@@ -285,7 +290,8 @@ describe(`bulk tools - Odoo ${getOdooVersion()}`, () => {
       });
 
       expect(result.success).toBe(true);
-      const data = result.result!;
+      expect(result.result).toBeDefined();
+      const data = result.result as NonNullable<typeof result.result>;
 
       expect(data.validation_only).toBe(true);
       expect(data.would_affect).toBe(1);
@@ -343,7 +349,8 @@ describe(`bulk tools - Odoo ${getOdooVersion()}`, () => {
       });
 
       expect(result.success).toBe(true);
-      const data = result.result!;
+      expect(result.result).toBeDefined();
+      const data = result.result as NonNullable<typeof result.result>;
       expect(data.succeeded).toBe(3);
 
       // Track for cleanup
