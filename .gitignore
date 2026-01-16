@@ -22,6 +22,9 @@ example_import
 odoo_config.json
 .mcp.json
 
+# Local docs/SOPs
+.odoo-mcp/
+
 # npm pack artifacts
 *.tgz
 package/
