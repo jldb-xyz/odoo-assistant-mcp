@@ -6,7 +6,8 @@ Adopt MCP revision 2026-07-28 and migrate to the v2 SDK.
 
 **Breaking**
 
-- **Node.js 20+ is now required** (was 18, which is end-of-life).
+- **Node.js 22.13+ is now required** (was 18). Node 20 reached end of life on
+  2026-04-30, and pnpm 11 cannot run on it.
 - The HTTP transport no longer depends on Express. It is served by
   `createMcpHandler` over `node:http`, so `express` and
   `@modelcontextprotocol/express` are no longer needed. `Host`/`Origin`

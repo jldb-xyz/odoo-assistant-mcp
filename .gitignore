@@ -44,3 +44,6 @@ references/.test-db-name
 
 # Mutation testing crash-recovery journal (see scripts/mutation-test.mjs)
 .mutation-journal.json
+
+# Wrangler (Cloudflare Workers) local state
+.wrangler/
