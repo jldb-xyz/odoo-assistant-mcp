@@ -147,6 +147,7 @@ Every SOP you save makes your whole team faster. They compound.
 | `ODOO_VERIFY_SSL` | No | Verify TLS certificates (default: on; `0`/`false`/`no` to disable) |
 | `ODOO_MCP_PORT` | No | Port for the HTTP transport (default: 3000) |
 | `ODOO_MCP_HOST` | No | Bind address for the HTTP transport (default: 127.0.0.1) |
+| `ODOO_MCP_ALLOWED_HOSTS` | No | Extra `Host`/`Origin` values to accept, comma-separated. Needed behind a proxy or ingress |
 
 **Or use a config file** at `./odoo_config.json`, `~/.config/odoo/config.json`, or `~/.odoo_config.json`:
 
@@ -202,6 +203,10 @@ odoo-mcp --http --host 0.0.0.0  # see the warning below
 
 The server implements MCP revision **2026-07-28** and also serves clients using
 the older 2025-era handshake, on both transports.
+
+For hosting it properly — Docker, Kubernetes, systemd, Cloudflare Workers,
+authentication, health probes and scaling — see the
+[Deployment Guide](DEPLOYMENT.md).
 
 ### Available Tools
 
@@ -282,5 +287,7 @@ operations that change data — `execute_method`, `bulk_operation` and
 
 ## Further Reading
 
+- [Deployment Guide](DEPLOYMENT.md) — hosting, authentication and scaling
+- [Architecture](DESIGN.md) — how the server is put together
 - [Odoo External API Docs](https://www.odoo.com/documentation/18.0/developer/reference/external_api.html)
 - [Model Context Protocol](https://modelcontextprotocol.io)

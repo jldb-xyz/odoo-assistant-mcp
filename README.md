@@ -51,31 +51,35 @@ Add to your project's `.mcp.json`:
 
 Start Claude Code. You're connected.
 
-## Transports
+## Hosting it
 
-By default the server speaks MCP over **stdio**, which is what the config above
-uses. It also serves **Streamable HTTP**:
+The setup above needs no hosting — your MCP client starts the server itself over
+stdio. To share one instance across a team or an automated agent, run it over
+**Streamable HTTP**:
 
 ```bash
 odoo-mcp --http                        # http://127.0.0.1:3000/mcp
 odoo-mcp --http --port 8080            # custom port
-odoo-mcp --http --host 0.0.0.0         # bind all interfaces (see warning)
+odoo-mcp --http --allowed-hosts mcp.example.com
 ```
-
-`--port` and `--host` can also be set with `ODOO_MCP_PORT` and `ODOO_MCP_HOST`.
 
 > **The HTTP transport has no authentication.** It binds to `127.0.0.1` by
 > default and validates the `Host` and `Origin` headers to block DNS-rebinding
 > attacks from the browser. Those protections assume a local bind — anyone who
 > can reach the port can read and write your Odoo data as the configured user.
-> If you bind to a non-loopback interface, put an authenticating reverse proxy
-> in front of it.
+> Put an authenticating reverse proxy in front of it before exposing it.
+
+**[Deployment Guide](docs/DEPLOYMENT.md)** covers Docker, Docker Compose,
+Kubernetes, systemd and Cloudflare Workers, with the security model, health
+probes, scaling and worked authentication examples. Ready-made manifests live in
+[`examples/deploy/`](examples/deploy/).
 
 ### Protocol support
 
 Implements MCP revision **2026-07-28**. Clients still speaking the 2025-era
 `initialize` handshake are served transparently on both transports, so no client
-config needs to change.
+config needs to change. Because that revision is stateless, HTTP replicas scale
+horizontally with no sticky routing.
 
 ## Documentation
 
@@ -84,6 +88,11 @@ config needs to change.
 - Configuration options
 - Building your SOP library
 - Troubleshooting
+
+**[Deployment Guide](docs/DEPLOYMENT.md)** — Hosting it: transports, Docker,
+Kubernetes, systemd, Cloudflare Workers, authentication and scaling.
+
+**[Architecture](docs/DESIGN.md)** — How it is put together, and why.
 
 **[Example SOPs](examples/sops/)** — Ready-to-use templates to get you started.
 

@@ -54,6 +54,25 @@ Adopt MCP revision 2026-07-28 and migrate to the v2 SDK.
   tool re-declared its schema by hand, which dropped the constraints from the
   advertised schema. Tool schemas are now derived from a single Zod object.
 
+**Deployment**
+
+- Added `docs/DEPLOYMENT.md` and `examples/deploy/`, covering stdio, Docker,
+  Docker Compose, Kubernetes, systemd and Cloudflare Workers, with the security
+  model, authentication options, health probes and scaling.
+- Added a `Dockerfile`: multi-stage, non-root, production dependencies only.
+- Added `GET /health` and `GET /ready`. The HTTP transport previously answered
+  404 to every path except `/mcp`, which answers 405 to GET, so orchestrators
+  had no probe target.
+- Added `ODOO_MCP_ALLOWED_HOSTS` / `--allowed-hosts`. The DNS-rebinding guard
+  accepted only loopback and the bind address, so behind an ingress or Service
+  every request was rejected with 403.
+- The package can now be imported. `main` and `bin` both pointed at the CLI,
+  which starts a server on import; `dist/lib.js` exports the public surface and
+  starts nothing.
+- Fixed two module-scope calls that assumed a real filesystem and threw on
+  import where there is not one, taking down the whole server rather than
+  degrading one feature. Found by running on Cloudflare Workers.
+
 **Testing**
 
 - Integration tests no longer report a pass when Odoo is unavailable. They used
