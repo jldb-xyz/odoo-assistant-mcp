@@ -2,103 +2,98 @@
 "odoo-mcp": major
 ---
 
-Adopt MCP revision 2026-07-28 and migrate to the v2 SDK.
+Adopt MCP revision 2026-07-28, and make the server hostable.
 
-**Breaking**
+Your existing setup keeps working — MCP clients that speak the older protocol
+are served exactly as before, and no `.mcp.json` needs to change. There are
+three things to check before upgrading, below.
 
-- **Node.js 22.13+ is now required** (was 18). Node 20 reached end of life on
-  2026-04-30, and pnpm 11 cannot run on it.
-- The HTTP transport no longer depends on Express. It is served by
-  `createMcpHandler` over `node:http`, so `express` and
-  `@modelcontextprotocol/express` are no longer needed. `Host`/`Origin`
-  DNS-rebinding protection is preserved.
-- The 2026-07-28 revision is stateless, so per-session transport bookkeeping is
-  gone: the internal `_getTransports()` and `_clearTransports()` helpers were
-  removed, along with `BootstrapDependencies.createTransport`. `runServer()` now
-  returns a `StdioServerHandle`.
-- The Excel tools are backed by ExcelJS instead of SheetJS. `.xls` and `.ods`
-  inputs are no longer supported; the error text for a missing file changed.
+## Before you upgrade
 
-**Protocol**
+**1. You need Node.js 22.13 or newer.** Node 18 and 20 are both past end of life
+(Node 20 ended 2026-04-30). Check with `node --version`; if you run `npx
+odoo-mcp` from an MCP client, that is the Node your client runs under.
 
-- Implements MCP revision **2026-07-28** on both transports, via `serveStdio`
-  and `createMcpHandler`. Clients using the 2025-era `initialize` handshake are
-  still served from the same server factory, so no client config needs to
-  change.
-- Failing tools now set `isError: true` on the tool result. Previously every
-  failure was reported to the model as a successful call whose text happened to
-  contain `"success": false`.
-- All 23 tools now advertise a `title` and behavioural `annotations`
-  (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`), so
-  clients can distinguish lookups from operations that change Odoo data.
-- The server now reports its real package version instead of a hardcoded
-  `1.0.0`.
+**2. Excel tools no longer read `.xls` or `.ods`, only `.xlsx`.** The library
+behind them, SheetJS, has two unpatched security advisories and stopped
+publishing to npm, so it has been replaced with ExcelJS. Re-save any older
+spreadsheets as `.xlsx`, or export them again from the source system.
 
-**Security**
+**3. If you save docs or SOPs, check them once.** A security fix below closes a
+hole that allowed writing files outside `.odoo-mcp/`. If an untrusted prompt has
+ever reached `save_doc` or `save_sop`, look for unexpected `.md` files beside
+your project directory and beside `~/.odoo-mcp`.
 
-- Fixed a path traversal in the docs/SOP system. `save_doc`, `save_sop`,
-  `read_doc` and `read_sop` took an unvalidated `name` straight from tool input
-  into `path.join`, allowing reads and writes outside `.odoo-mcp/` — an
-  arbitrary file write with a forced `.md` extension. Entry names are now
-  required to be flat file names and the resolved path is verified to stay
-  inside the target directory.
-- Updated `@modelcontextprotocol/sdk` past GHSA-345p-7cg4-v4c7 (cross-client
-  data leak, affecting `<= 1.25.3`).
-- Replaced `xlsx@0.18.5`, which carries two unpatchable-on-npm high advisories
-  (GHSA-4r6h-8v6p-xvw6 prototype pollution, GHSA-5pgg-2g8v-p4x9 ReDoS), with
-  ExcelJS.
-- Updated Vitest past GHSA-5xrq-8626-4rwp (critical, dev-only).
+Running it over HTTP behind a proxy or in a cluster? See the new
+[deployment guide](docs/DEPLOYMENT.md) — you will need `ODOO_MCP_ALLOWED_HOSTS`.
 
-**Fixed**
+## Security fixes
 
-- `bulk_operation` published its `batch_size` bounds (1–1000) to clients. The
-  tool re-declared its schema by hand, which dropped the constraints from the
-  advertised schema. Tool schemas are now derived from a single Zod object.
+**Files could be written outside the docs directory.** `save_doc` and `save_sop`
+passed the name you gave them straight into a file path, so a name containing
+`../` escaped `.odoo-mcp/` and wrote anywhere the process could reach (as a
+`.md` file). `read_doc` and `read_sop` could read back out the same way. Names
+must now be plain file names. See step 3 above.
 
-**Deployment**
+**Three dependency advisories resolved**, all fixed by upgrading:
 
-- Added `docs/DEPLOYMENT.md` and `examples/deploy/`, covering stdio, Docker,
-  Docker Compose, Kubernetes, systemd and Cloudflare Workers, with the security
-  model, authentication options, health probes and scaling.
-- Added a `Dockerfile`: multi-stage, non-root, production dependencies only.
-- Added `GET /health` and `GET /ready`. The HTTP transport previously answered
-  404 to every path except `/mcp`, which answers 405 to GET, so orchestrators
-  had no probe target.
-- Added `ODOO_MCP_ALLOWED_HOSTS` / `--allowed-hosts`. The DNS-rebinding guard
-  accepted only loopback and the bind address, so behind an ingress or Service
-  every request was rejected with 403.
-- The package can now be imported. `main` and `bin` both pointed at the CLI,
-  which starts a server on import; `dist/lib.js` exports the public surface and
-  starts nothing.
-- Fixed two module-scope calls that assumed a real filesystem and threw on
-  import where there is not one, taking down the whole server rather than
-  degrading one feature. Found by running on Cloudflare Workers.
+| Advisory | Severity | What it affected |
+|---|---|---|
+| GHSA-345p-7cg4-v4c7 | High | MCP SDK — data could leak between concurrent clients |
+| GHSA-4r6h-8v6p-xvw6 | High | SheetJS — prototype pollution when reading a spreadsheet |
+| GHSA-5pgg-2g8v-p4x9 | High | SheetJS — denial of service when reading a spreadsheet |
 
-**Testing**
+A fourth (GHSA-5xrq-8626-4rwp, critical) affected a test tool only and was never
+part of the published package.
 
-- Integration tests no longer report a pass when Odoo is unavailable. They used
-  `if (skipReason) return;`, so a run with no Odoo printed "99 passed" —
-  identical to a real run. They now report as skipped, and
-  `REQUIRE_INTEGRATION_TESTS=true` (set in CI) makes an unreachable Odoo a hard
-  failure.
-- Fixed several tests that could not fail, found by mutation testing: bulk's
-  required-field check (masked by an "Unknown field" error from the same
-  fixture), `check_access` denial (only the throwing path was covered, not the
-  `false` return Odoo actually uses), `execute_action`'s action name (the
-  fixture matched a plausible hardcoded value), and `search_records` pagination
-  (the mock ignored the limit it was given).
-- Added `pnpm test:mutation`, which injects a catalogue of plausible real bugs
-  (`scripts/mutations.mjs`) and requires the suite to go red for each. It runs
-  as its own CI job and is what found the tests above. A stale catalogue entry
-  or a failing baseline is an error rather than a skip, since either would score
-  every mutant as caught.
-- Added protocol-level coverage for the HTTP transport, including
-  DNS-rebinding/Origin rejection and bind-failure handling — `http-server.ts`
-  went from 4% to 81% line coverage.
-- `runHttpServer` now rejects on a bind error instead of hanging, and takes
-  `handleSignals` so it no longer unconditionally hijacks process signals.
+## What's new
 
-**Internal**
+**Your assistant now knows when a tool fails.** Previously every failure came
+back as a *successful* call whose text happened to say it failed, so the
+assistant would often carry on as though a write had worked. Failures are now
+marked as errors.
 
-- Switched from Yarn to pnpm; TypeScript 7, Zod 4, Vitest 4.1, Biome 2.5.
-- Dropped the SWC build path in favour of `tsc` (the two configs had drifted).
+**Your MCP client can warn you before destructive operations.** Every tool now
+declares whether it only reads, whether it can destroy data, and whether it
+reaches Odoo. `execute_method`, `bulk_operation` and `execute_action` are marked
+destructive, so clients that support confirmation prompts can ask first.
+
+**You can host it.** There is now a [deployment guide](docs/DEPLOYMENT.md), a
+Docker image, and ready-to-use manifests in `examples/deploy/` for Docker
+Compose, Kubernetes, systemd and Cloudflare Workers — covering the security
+model, authentication options and scaling. `GET /health` and `GET /ready` give
+orchestrators something to probe.
+
+> The HTTP transport still has **no authentication of its own**. It binds to
+> localhost and blocks browser-based DNS-rebinding, but anyone who can reach the
+> port can read and write your Odoo data. Put an authenticating proxy in front
+> of it before exposing it; the guide shows how.
+
+**Protocol revision 2026-07-28**, on both stdio and HTTP. It is stateless, so
+HTTP deployments scale horizontally with no sticky sessions. Older clients are
+served from the same process, unchanged.
+
+**More accurate tool schemas.** `bulk_operation` now tells clients its
+`batch_size` limits (1–1000) instead of accepting an out-of-range value and
+failing later, and the server reports its real version rather than a hardcoded
+`1.0.0`.
+
+## If you embed this package
+
+Only relevant if you `import` it rather than running the CLI.
+
+- The package is now importable. `main` used to point at the CLI, which started
+  a server as a side effect of being imported; it now points at a library entry
+  that starts nothing. The `odoo-mcp` command is unchanged.
+- `runServer()` returns a handle you can `close()`.
+- Removed: `_getTransports()`, `_clearTransports()` and
+  `BootstrapDependencies.createTransport`, all obsolete now the protocol is
+  stateless.
+
+## Under the hood
+
+The test suite was reporting confidence it had not earned: the 99 integration
+tests passed even with no Odoo running, and several unit tests could not fail.
+Both are fixed, and `pnpm test:mutation` now verifies the tests can actually
+detect the bugs they describe. Toolchain moved to pnpm, TypeScript 7, Zod 4 and
+Vitest 4.1.
