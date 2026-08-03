@@ -442,6 +442,33 @@ describe("action tools", () => {
       expect(result.error).toContain("list_available_actions");
     });
 
+    it("recognises the class-attribute error phrasing used by Odoo 14", async () => {
+      // Odoo 14 raises AttributeError against the class ("type object 'x' has
+      // no attribute 'y'"), putting the model name between "object" and "has".
+      // Matching the contiguous "object has no attribute" missed it, so a
+      // missing action surfaced as a raw Python traceback.
+      vi.mocked(mockClient.getModelFields).mockResolvedValue({
+        id: { type: "integer", string: "ID" },
+      });
+      vi.mocked(mockClient.readRecords).mockResolvedValue([]);
+      vi.mocked(mockClient.execute).mockRejectedValue(
+        new Error(
+          "XML-RPC fault: Traceback (most recent call last):\n" +
+            "AttributeError: type object 'res.partner' has no attribute 'nonexistent_action_xyz'",
+        ),
+      );
+
+      const result = await executeAction(mockClient, {
+        model: "res.partner",
+        action: "nonexistent_action_xyz",
+        record_ids: [1],
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("does not exist");
+      expect(result.error).toContain("list_available_actions");
+    });
+
     it("returns error for non-existent model", async () => {
       vi.mocked(mockClient.getModelFields).mockResolvedValue({
         error: "Model not found",

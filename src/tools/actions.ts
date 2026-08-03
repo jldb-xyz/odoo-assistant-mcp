@@ -388,10 +388,18 @@ export async function executeAction(
         input.context || {},
       );
     } catch (error) {
-      // Check if it's a method not found error
+      // Check if it's a method not found error.
+      //
+      // Odoo phrases AttributeError two ways depending on whether the lookup
+      // hit an instance or the class:
+      //   "'res.partner' object has no attribute 'x'"        (instance)
+      //   "type object 'res.partner' has no attribute 'x'"   (class, Odoo 14)
+      // Matching "has no attribute" alone covers both; requiring the
+      // contiguous "object has no attribute" missed the second, so on Odoo 14
+      // a missing action surfaced as a raw Python traceback.
       const errorStr = String(error);
       if (
-        errorStr.includes("object has no attribute") ||
+        errorStr.includes("has no attribute") ||
         errorStr.includes("is not defined")
       ) {
         return {
