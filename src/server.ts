@@ -1,8 +1,11 @@
+import { createRequire } from "node:module";
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/server";
 import {
-  McpServer,
-  ResourceTemplate,
-} from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+  type ServeStdioOptions,
+  type StdioServerHandle,
+  serveStdio,
+} from "@modelcontextprotocol/server/stdio";
+import { z } from "zod";
 import { getClientOptions, loadConfig } from "./connection/config.js";
 import { OdooClient } from "./connection/odoo-client.js";
 // Resources
@@ -19,6 +22,17 @@ import {
   type ToolResult,
 } from "./tools/index.js";
 import type { IOdooClient } from "./types/index.js";
+
+/**
+ * Version advertised to MCP clients. Read from package.json so it cannot drift
+ * from the published version. Resolves identically from `src/` and `dist/`.
+ */
+export const SERVER_VERSION: string = (
+  createRequire(import.meta.url)("../package.json") as { version: string }
+).version;
+
+/** Name advertised to MCP clients. */
+export const SERVER_NAME = "odoo-mcp";
 
 // Global client instance (mutable for runtime, but testable)
 let odooClient: OdooClient | null = null;
@@ -107,10 +121,10 @@ export function formatToolResult(result: ToolResult): string {
  * When deps is not provided, uses the global client (for production).
  */
 export function createServer(deps?: ServerDependencies): McpServer {
-  const server = new McpServer({
-    name: "Odoo MCP Server",
-    version: "1.0.0",
-  });
+  const server = new McpServer(
+    { name: SERVER_NAME, title: "Odoo MCP Server", version: SERVER_VERSION },
+    { capabilities: { tools: {}, resources: {} } },
+  );
 
   // Use injected client if provided, otherwise fall back to global
   const getClientFn = deps ? () => deps.client : getClient;
@@ -120,16 +134,23 @@ export function createServer(deps?: ServerDependencies): McpServer {
 
   // ===== Register All Tools from Registry =====
   for (const tool of toolRegistry.getAll()) {
+    // Tools are authored as raw Zod shapes for ergonomics; the SDK expects a
+    // Standard Schema object, so wrap once here at the registration boundary.
     server.registerTool(
       tool.name,
       {
+        ...(tool.title ? { title: tool.title } : {}),
         description: tool.description,
-        inputSchema: tool.inputSchema,
+        ...(tool.annotations ? { annotations: tool.annotations } : {}),
+        inputSchema: z.object(tool.inputSchema),
       },
       async (input) => {
         const result = await tool.handler(getClientFn(), input);
         return {
           content: [{ type: "text", text: formatToolResult(result) }],
+          // Surface handler failures as protocol-level tool errors, otherwise
+          // the model reads a failed call as a successful one.
+          ...(result.success ? {} : { isError: true }),
         };
       },
     );
@@ -194,10 +215,13 @@ export function createServer(deps?: ServerDependencies): McpServer {
 export interface BootstrapDependencies {
   /** Custom client initializer */
   initClient?: () => Promise<OdooClient>;
-  /** Custom transport factory - returns any transport-like object for testing */
-  createTransport?: () => unknown;
   /** Custom server factory */
   createMcpServer?: (deps?: ServerDependencies) => McpServer;
+  /** Custom stdio serving entry point (for testing) */
+  serve?: (
+    factory: () => McpServer,
+    options?: ServeStdioOptions,
+  ) => StdioServerHandle;
 }
 
 /**
@@ -216,7 +240,9 @@ export function logEnvironment(): void {
   }
 }
 
-export async function runServer(deps?: BootstrapDependencies): Promise<void> {
+export async function runServer(
+  deps?: BootstrapDependencies,
+): Promise<StdioServerHandle> {
   console.error("=== ODOO MCP SERVER STARTING ===");
   console.error(`Node.js version: ${process.version}`);
 
@@ -226,16 +252,18 @@ export async function runServer(deps?: BootstrapDependencies): Promise<void> {
   const initClient = deps?.initClient ?? initializeClient;
   odooClient = await initClient();
 
-  // Create and start server
+  // `serveStdio` owns the era decision: the opening exchange selects between
+  // the 2026-07-28 revision and the 2025 `initialize` handshake, and pins one
+  // instance from this factory for the life of the connection. Passing the
+  // factory unbuilt is what lets it do that.
   const createMcpServer = deps?.createMcpServer ?? createServer;
-  const server = createMcpServer();
-
-  const createTransport =
-    deps?.createTransport ?? (() => new StdioServerTransport());
-  const transport = createTransport() as Parameters<typeof server.connect>[0];
+  const serve = deps?.serve ?? serveStdio;
 
   console.error("Starting MCP server with stdio transport...");
-  await server.connect(transport);
+  const handle = serve(() => createMcpServer(), {
+    onerror: (error) => console.error("MCP stdio error:", error),
+  });
 
   console.error("MCP server running");
+  return handle;
 }

@@ -1,10 +1,15 @@
-import { randomUUID } from "node:crypto";
-import type { Server } from "node:http";
-import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import type { Express, Request, Response } from "express";
+import { createServer as createNodeHttpServer, type Server } from "node:http";
+import {
+  hostHeaderValidation,
+  type NodeIncomingMessageLike,
+  originValidation,
+  toNodeHandler,
+} from "@modelcontextprotocol/node";
+import {
+  createMcpHandler,
+  type McpHttpHandler,
+  type McpServer,
+} from "@modelcontextprotocol/server";
 import type { OdooClient } from "./connection/odoo-client.js";
 import {
   _setClient,
@@ -21,14 +26,44 @@ export interface HttpServerOptions {
 export interface HttpServerDependencies {
   initClient?: () => Promise<OdooClient>;
   createMcpServer?: () => McpServer;
-  createExpressApp?: (options: { host: string }) => Express;
+  /**
+   * Install SIGINT/SIGTERM handlers that shut the server down and exit the
+   * process. Defaults to true for the CLI; tests turn it off so they can own
+   * the lifecycle.
+   */
+  handleSignals?: boolean;
 }
 
-// Store transports by session ID
-const transports: Map<string, StreamableHTTPServerTransport> = new Map();
+/** Endpoint the MCP handler is mounted on. */
+const MCP_PATH = "/mcp";
 
 /**
- * Run the MCP server with HTTP/SSE transport
+ * Hostnames accepted in the Host and Origin headers. Anything else is a
+ * DNS-rebinding or cross-origin attempt against a locally bound server.
+ */
+function allowedHostnames(host: string): string[] {
+  const localhost = ["localhost", "127.0.0.1", "[::1]"];
+  return localhost.includes(host) ? localhost : [...localhost, host];
+}
+
+/**
+ * Build the MCP HTTP handler.
+ *
+ * `createMcpHandler` serves the 2026-07-28 revision per request and — with the
+ * default `legacy: 'stateless'` — also answers 2025-era traffic from the same
+ * factory, so existing clients keep working without a second code path. There
+ * is no session map to maintain: the modern revision is stateless by design.
+ */
+export function createMcpHttpHandler(
+  factory: () => McpServer,
+  onerror: (error: Error) => void = (error) =>
+    console.error("MCP handler error:", error),
+): McpHttpHandler {
+  return createMcpHandler(factory, { onerror });
+}
+
+/**
+ * Run the MCP server over Streamable HTTP.
  */
 export async function runHttpServer(
   options: HttpServerOptions,
@@ -44,157 +79,66 @@ export async function runHttpServer(
   const odooClient = await initClient();
   _setClient(odooClient);
 
-  // Create Express app with DNS rebinding protection
-  const createExpressApp = deps?.createExpressApp ?? createMcpExpressApp;
-  const app = createExpressApp({ host: options.host });
-
-  // Factory for creating new McpServer instances (one per session)
-  const getMcpServer = deps?.createMcpServer ?? (() => createServer());
-
-  // POST handler - handle JSON-RPC requests
-  app.post("/mcp", async (req: Request, res: Response) => {
-    const sessionId = req.headers["mcp-session-id"] as string | undefined;
-
-    try {
-      let transport: StreamableHTTPServerTransport;
-
-      const existingTransport = sessionId
-        ? transports.get(sessionId)
-        : undefined;
-      if (existingTransport) {
-        // Reuse existing transport
-        transport = existingTransport;
-      } else if (!sessionId && isInitializeRequest(req.body)) {
-        // New initialization request
-        transport = new StreamableHTTPServerTransport({
-          sessionIdGenerator: () => randomUUID(),
-          onsessioninitialized: (sid: string) => {
-            console.error(`Session initialized: ${sid}`);
-            transports.set(sid, transport);
-          },
-        });
-
-        transport.onclose = () => {
-          const sid = transport.sessionId;
-          if (sid && transports.has(sid)) {
-            console.error(`Session closed: ${sid}`);
-            transports.delete(sid);
-          }
-        };
-
-        // Connect transport to a new MCP server instance
-        const server = getMcpServer();
-        await server.connect(transport as Parameters<typeof server.connect>[0]);
-        await transport.handleRequest(req, res, req.body);
-        return;
-      } else {
-        // Invalid request - no session ID or not initialization request
-        res.status(400).json({
-          jsonrpc: "2.0",
-          error: {
-            code: -32000,
-            message: "Bad Request: No valid session ID provided",
-          },
-          id: null,
-        });
-        return;
-      }
-
-      await transport.handleRequest(req, res, req.body);
-    } catch (error) {
-      console.error("Error handling MCP request:", error);
-      if (!res.headersSent) {
-        res.status(500).json({
-          jsonrpc: "2.0",
-          error: {
-            code: -32603,
-            message: "Internal server error",
-          },
-          id: null,
-        });
-      }
-    }
+  const factory = deps?.createMcpServer ?? (() => createServer());
+  const handler = createMcpHttpHandler(factory);
+  const nodeHandler = toNodeHandler(handler, {
+    onerror: (error) => console.error("Error handling MCP request:", error),
   });
 
-  // GET handler - SSE streams
-  app.get("/mcp", async (req: Request, res: Response) => {
-    const sessionId = req.headers["mcp-session-id"] as string | undefined;
-    const transport = sessionId ? transports.get(sessionId) : undefined;
+  // DNS-rebinding and cross-origin protection for a locally bound server
+  const hostnames = allowedHostnames(options.host);
+  const validateHost = hostHeaderValidation(hostnames);
+  const validateOrigin = originValidation(hostnames);
 
-    if (!transport) {
-      res.status(400).send("Invalid or missing session ID");
+  const server = createNodeHttpServer((req, res) => {
+    if (!validateHost(req, res)) return;
+    if (!validateOrigin(req, res)) return;
+
+    const pathname = new URL(
+      req.url ?? "/",
+      `http://${req.headers.host ?? "localhost"}`,
+    ).pathname;
+    if (pathname !== MCP_PATH) {
+      res.writeHead(404, { "content-type": "text/plain" });
+      res.end("Not Found");
       return;
     }
 
-    await transport.handleRequest(req, res);
+    // Node types `method`/`url` as `string | undefined`, which
+    // `exactOptionalPropertyTypes` will not match against the SDK's
+    // `method?: string` duck type. Both are always set on a server request.
+    void nodeHandler(req as NodeIncomingMessageLike, res);
   });
 
-  // DELETE handler - session termination
-  app.delete("/mcp", async (req: Request, res: Response) => {
-    const sessionId = req.headers["mcp-session-id"] as string | undefined;
-    const transport = sessionId ? transports.get(sessionId) : undefined;
-
-    if (!transport) {
-      res.status(400).send("Invalid or missing session ID");
-      return;
-    }
-
-    try {
-      await transport.handleRequest(req, res);
-    } catch (error) {
-      console.error("Error handling session termination:", error);
-      if (!res.headersSent) {
-        res.status(500).send("Error processing session termination");
-      }
-    }
+  await new Promise<void>((resolve, reject) => {
+    // Bind failures (EADDRINUSE, EACCES) arrive as an 'error' event, not a
+    // throw — without this the caller would hang instead of failing.
+    const onError = (error: Error) => reject(error);
+    server.once("error", onError);
+    server.listen(options.port, options.host, () => {
+      server.removeListener("error", onError);
+      console.error(
+        `MCP HTTP server listening on http://${options.host}:${options.port}${MCP_PATH}`,
+      );
+      resolve();
+    });
   });
 
-  // Start listening
-  const server = app.listen(options.port, options.host, () => {
-    console.error(
-      `MCP HTTP server listening on http://${options.host}:${options.port}/mcp`,
-    );
-  });
-
-  // Graceful shutdown
+  // Graceful shutdown. `once` so repeated calls in one process don't stack
+  // duplicate listeners.
   const shutdown = async () => {
     console.error("Shutting down HTTP server...");
-
-    // Close all active transports
-    for (const [sessionId, transport] of transports) {
-      try {
-        console.error(`Closing session: ${sessionId}`);
-        await transport.close();
-      } catch (error) {
-        console.error(`Error closing session ${sessionId}:`, error);
-      }
-    }
-    transports.clear();
-
+    await handler.close();
     server.close(() => {
       console.error("HTTP server shutdown complete");
       process.exit(0);
     });
   };
 
-  process.on("SIGINT", shutdown);
-  process.on("SIGTERM", shutdown);
+  if (deps?.handleSignals ?? true) {
+    process.once("SIGINT", shutdown);
+    process.once("SIGTERM", shutdown);
+  }
 
   return server;
-}
-
-/**
- * Get the transports map (for testing)
- * @internal
- */
-export function _getTransports(): Map<string, StreamableHTTPServerTransport> {
-  return transports;
-}
-
-/**
- * Clear all transports (for testing)
- * @internal
- */
-export function _clearTransports(): void {
-  transports.clear();
 }
