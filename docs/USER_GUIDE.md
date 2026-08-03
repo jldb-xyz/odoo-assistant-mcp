@@ -144,6 +144,9 @@ Every SOP you save makes your whole team faster. They compound.
 | `ODOO_USERNAME` | Yes | Login username (usually email) |
 | `ODOO_PASSWORD` | Yes | API key or password |
 | `ODOO_TIMEOUT` | No | Request timeout in seconds (default: 30) |
+| `ODOO_VERIFY_SSL` | No | Verify TLS certificates (default: on; `0`/`false`/`no` to disable) |
+| `ODOO_MCP_PORT` | No | Port for the HTTP transport (default: 3000) |
+| `ODOO_MCP_HOST` | No | Bind address for the HTTP transport (default: 127.0.0.1) |
 
 **Or use a config file** at `./odoo_config.json`, `~/.config/odoo/config.json`, or `~/.odoo_config.json`:
 
@@ -181,14 +184,66 @@ Claude has built-in docs for Odoo patterns—it consults them automatically. You
 Show me the orm-methods documentation
 ```
 
+### Transports
+
+By default the server speaks MCP over stdio. To run it over Streamable HTTP:
+
+```bash
+odoo-mcp --http                 # http://127.0.0.1:3000/mcp
+odoo-mcp --http --port 8080
+odoo-mcp --http --host 0.0.0.0  # see the warning below
+```
+
+> **The HTTP transport has no authentication.** It binds to loopback by default
+> and validates `Host` and `Origin` headers to block DNS-rebinding attacks, but
+> anyone who can reach the port can read and write your Odoo data as the
+> configured user. Only bind to a non-loopback interface behind an
+> authenticating reverse proxy.
+
+The server implements MCP revision **2026-07-28** and also serves clients using
+the older 2025-era handshake, on both transports.
+
 ### Available Tools
+
+**Discovering your data**
 
 | Tool | What It Does |
 |------|--------------|
+| `list_models` | List models in your instance |
+| `get_model_schema` | Field definitions for a model |
+| `get_model_relations` | How a model links to others |
+| `get_create_requirements` | What a new record must supply |
+| `get_selection_values` | Valid values for a dropdown field |
+| `explain_field` | Explain a single field in detail |
+| `get_record_sample` | Fetch example records to see real shapes |
+| `validate_domain` | Check a filter before you run it |
+
+**Reading and writing records**
+
+| Tool | What It Does |
+|------|--------------|
+| `search_records` | Search with filters, fields and ordering |
+| `find_record_by_name` | Resolve a name to a record ID |
 | `execute_method` | Run any Odoo method on any model |
+| `bulk_operation` | Batched create / update / delete, with dry-run |
+| `check_access` | Check your permissions before attempting a write |
+| `list_available_actions` | Discover workflow actions on a record |
+| `execute_action` | Run a workflow action (confirm, post, cancel, …) |
+
+**Knowledge and files**
+
+| Tool | What It Does |
+|------|--------------|
 | `list_docs` / `read_doc` | Access reference documentation |
+| `save_doc` | Save a new reference doc |
 | `list_sops` / `read_sop` | Access your saved procedures |
-| `save_doc` / `save_sop` | Save new docs or procedures |
+| `save_sop` | Save a new procedure |
+| `list_excel_sheets` | List sheets in a spreadsheet |
+| `convert_excel` | Convert a spreadsheet (or one sheet) to CSV |
+
+Every tool is annotated so your client can tell read-only lookups from
+operations that change data — `execute_method`, `bulk_operation` and
+`execute_action` are all marked destructive.
 
 ### Available Resources
 

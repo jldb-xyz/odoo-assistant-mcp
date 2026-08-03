@@ -51,6 +51,32 @@ Add to your project's `.mcp.json`:
 
 Start Claude Code. You're connected.
 
+## Transports
+
+By default the server speaks MCP over **stdio**, which is what the config above
+uses. It also serves **Streamable HTTP**:
+
+```bash
+odoo-mcp --http                        # http://127.0.0.1:3000/mcp
+odoo-mcp --http --port 8080            # custom port
+odoo-mcp --http --host 0.0.0.0         # bind all interfaces (see warning)
+```
+
+`--port` and `--host` can also be set with `ODOO_MCP_PORT` and `ODOO_MCP_HOST`.
+
+> **The HTTP transport has no authentication.** It binds to `127.0.0.1` by
+> default and validates the `Host` and `Origin` headers to block DNS-rebinding
+> attacks from the browser. Those protections assume a local bind — anyone who
+> can reach the port can read and write your Odoo data as the configured user.
+> If you bind to a non-loopback interface, put an authenticating reverse proxy
+> in front of it.
+
+### Protocol support
+
+Implements MCP revision **2026-07-28**. Clients still speaking the 2025-era
+`initialize` handshake are served transparently on both transports, so no client
+config needs to change.
+
 ## Documentation
 
 **[User Guide](docs/USER_GUIDE.md)** — Complete guide including:
@@ -73,7 +99,7 @@ Start Claude Code. You're connected.
 
 - Odoo 14+ with XML-RPC enabled (default)
 - API key (Custom plans only—not available on One App Free or Standard)
-- Node.js 18+ 
+- Node.js 20+
 
 ### Tested Versions
 
