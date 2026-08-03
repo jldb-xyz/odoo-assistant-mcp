@@ -121,6 +121,48 @@ describe("access tools", () => {
       expect(data.reason).toBeDefined();
     });
 
+    it("denies access when check_access_rights resolves false", async () => {
+      // This is the path Odoo actually takes: called with raise_exception=false
+      // it *returns* false rather than throwing. Reporting access granted here
+      // would tell the caller they may write when Odoo will refuse.
+      vi.mocked(mockClient.getModelFields).mockResolvedValue({
+        id: { type: "integer", string: "ID" },
+        name: { type: "char", string: "Name" },
+      });
+
+      vi.mocked(mockClient.execute).mockResolvedValue(false);
+
+      const result = await checkAccess(mockClient, {
+        model: "res.partner",
+        operation: "write",
+      });
+
+      expect(result.success).toBe(true);
+      const data = result.result as Record<string, unknown>;
+      expect(data.has_access).toBe(false);
+      expect(data.reason).toContain("Access denied");
+    });
+
+    it("does not treat a non-boolean check_access_rights result as granted", async () => {
+      // Odoo 18 returns None on success when raise_exception=true; over XML-RPC
+      // that can surface as an unexpected value. Only an explicit true grants.
+      vi.mocked(mockClient.getModelFields).mockResolvedValue({
+        id: { type: "integer", string: "ID" },
+      });
+
+      vi.mocked(mockClient.execute).mockResolvedValue(
+        undefined as unknown as boolean,
+      );
+
+      const result = await checkAccess(mockClient, {
+        model: "res.partner",
+        operation: "unlink",
+      });
+
+      const data = result.result as Record<string, unknown>;
+      expect(data.has_access).toBe(false);
+    });
+
     it("returns error for non-existent model", async () => {
       vi.mocked(mockClient.getModelFields).mockResolvedValue({
         error: "Model not found",

@@ -1,0 +1,38 @@
+# Build context hygiene: everything the image does not need. Keeping this tight
+# speeds up builds and avoids baking local secrets or state into layers.
+
+node_modules
+dist
+coverage
+
+.git
+.github
+.claude
+.changeset
+
+# Local config that may hold credentials
+odoo_config.json
+.odoo-mcp
+.env
+.env.*
+
+# Tests and tooling — the runtime image is built from dist/ only
+src/**/*.test.ts
+src/__tests__
+src/test-utils
+scripts
+docs
+examples
+vitest.config.ts
+vitest.integration.config.ts
+biome.json
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# Artefacts and noise
+*.tgz
+*.log
+.mutation-journal.json
+.test-db-name
+.DS_Store

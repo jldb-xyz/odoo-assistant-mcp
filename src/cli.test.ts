@@ -92,4 +92,36 @@ describe("cli", () => {
       expect(options.host).toBe("127.0.0.1");
     });
   });
+
+  describe("allowed hosts", () => {
+    it("defaults to no extra allowed hosts", () => {
+      const options = parseArgs([]);
+      expect(options.allowedHosts).toEqual([]);
+    });
+
+    it("parses a comma-separated --allowed-hosts flag", () => {
+      const options = parseArgs([
+        "--allowed-hosts",
+        "mcp.example.com,internal",
+      ]);
+      expect(options.allowedHosts).toEqual(["mcp.example.com", "internal"]);
+    });
+
+    it("reads ODOO_MCP_ALLOWED_HOSTS", () => {
+      process.env.ODOO_MCP_ALLOWED_HOSTS = "a.example.com, b.example.com";
+      const options = parseArgs([]);
+      expect(options.allowedHosts).toEqual(["a.example.com", "b.example.com"]);
+    });
+
+    it("ignores blank entries", () => {
+      const options = parseArgs(["--allowed-hosts", "a.example.com,,  ,b"]);
+      expect(options.allowedHosts).toEqual(["a.example.com", "b"]);
+    });
+
+    it("CLI flag overrides the env var", () => {
+      process.env.ODOO_MCP_ALLOWED_HOSTS = "from-env";
+      const options = parseArgs(["--allowed-hosts", "from-flag"]);
+      expect(options.allowedHosts).toEqual(["from-flag"]);
+    });
+  });
 });

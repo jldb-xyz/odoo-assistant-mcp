@@ -7,6 +7,8 @@ import { defineTool } from "./registry.js";
  */
 export const listDocsTool = defineTool({
   name: "list_docs",
+  title: "List Documentation",
+  annotations: { readOnlyHint: true, openWorldHint: false },
   description:
     "List available Odoo technical reference docs. These docs contain essential information for correctly calling Odoo methods via XML-RPC - consult them before complex operations. Sources: bundled (core ORM/domain syntax), global (~/.odoo-mcp/docs/), local (.odoo-mcp/docs/).",
   inputSchema: {},
@@ -27,6 +29,8 @@ export const listDocsTool = defineTool({
  */
 export const readDocTool = defineTool({
   name: "read_doc",
+  title: "Read Documentation",
+  annotations: { readOnlyHint: true, openWorldHint: false },
   description:
     "Read a specific documentation file by name. Use this to learn correct Odoo API patterns before calling execute_method. Key docs: 'orm-methods' (CRUD/search syntax), 'orm-domains' (filter expressions), 'import-patterns' (bulk operations).",
   inputSchema: {
@@ -56,6 +60,13 @@ export const readDocTool = defineTool({
  */
 export const saveDocTool = defineTool({
   name: "save_doc",
+  title: "Save Documentation",
+  annotations: {
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
   description:
     "Save documentation to the local project (.odoo-mcp/docs/). Use this to persist learned patterns about project-specific Odoo models, custom fields, or instance-specific behaviors for future reference.",
   inputSchema: {

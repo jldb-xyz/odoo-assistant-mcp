@@ -122,33 +122,71 @@ export async function isOdooRunning(
   host: string = TEST_CONFIG.host,
   port: number = TEST_CONFIG.port,
 ): Promise<boolean> {
+  // `/web/health` only exists on newer Odoo versions. A non-OK response there
+  // (a 404 on Odoo 14, say) says nothing about whether the instance is up, so
+  // it must fall through to the XML-RPC endpoint every supported version
+  // serves — returning early on `response.ok` reported Odoo 14 as permanently
+  // down.
   try {
     const response = await fetch(`http://${host}:${port}/web/health`, {
       method: "GET",
       signal: AbortSignal.timeout(5000),
     });
+    if (response.ok) return true;
+  } catch {
+    // Unreachable or no such endpoint — fall through to XML-RPC.
+  }
+
+  try {
+    const response = await fetch(`http://${host}:${port}/xmlrpc/2/common`, {
+      method: "POST",
+      headers: { "Content-Type": "text/xml" },
+      body: '<?xml version="1.0"?><methodCall><methodName>version</methodName></methodCall>',
+      signal: AbortSignal.timeout(5000),
+    });
     return response.ok;
   } catch {
-    // Try XML-RPC endpoint as fallback
-    try {
-      const response = await fetch(`http://${host}:${port}/xmlrpc/2/common`, {
-        method: "POST",
-        headers: { "Content-Type": "text/xml" },
-        body: '<?xml version="1.0"?><methodCall><methodName>version</methodName></methodCall>',
-        signal: AbortSignal.timeout(5000),
-      });
-      return response.ok;
-    } catch {
-      return false;
-    }
+    return false;
   }
 }
 
 /**
- * Check if integration tests should run
- * Returns a reason string if tests should be skipped, otherwise null
+ * Whether a missing Odoo must fail the run rather than skip it.
+ *
+ * Locally, skipping is the right behaviour — most contributors will not have
+ * Odoo running. In CI the containers are started explicitly, so a skip means
+ * the environment broke, and silently reporting success would hide it.
+ */
+export function isIntegrationRequired(): boolean {
+  if (process.env.REQUIRE_INTEGRATION_TESTS === "false") return false;
+  return (
+    process.env.REQUIRE_INTEGRATION_TESTS === "true" ||
+    process.env.CI === "true"
+  );
+}
+
+/**
+ * Check if integration tests should run.
+ *
+ * Returns a reason string if tests should be skipped, otherwise null.
+ * Throws when integration coverage is required but unavailable, so the run
+ * fails loudly instead of reporting a pass for tests that never executed.
  */
 export async function shouldSkipIntegrationTests(): Promise<string | null> {
+  const reason = await resolveSkipReason();
+
+  if (reason && isIntegrationRequired()) {
+    throw new Error(
+      `Integration tests are required in this environment but cannot run: ${reason}. ` +
+        "Start Odoo (see docker:up / docker:wait), or set " +
+        "REQUIRE_INTEGRATION_TESTS=false to allow skipping.",
+    );
+  }
+
+  return reason;
+}
+
+async function resolveSkipReason(): Promise<string | null> {
   // Check for explicit skip flag
   if (process.env.SKIP_INTEGRATION_TESTS === "true") {
     return "SKIP_INTEGRATION_TESTS is set";

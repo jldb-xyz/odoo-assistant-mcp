@@ -1,0 +1,182 @@
+# Kubernetes deployment for the Odoo MCP server.
+#
+#   kubectl apply -f examples/deploy/kubernetes/odoo-mcp.yaml
+#
+# Replace the Secret with a real one (sealed-secrets, External Secrets Operator,
+# Vault, SOPS — anything but a committed literal).
+#
+# The MCP endpoint has no authentication of its own. The Ingress below is where
+# you attach it; see docs/DEPLOYMENT.md.
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: odoo-mcp-credentials
+  labels:
+    app.kubernetes.io/name: odoo-mcp
+type: Opaque
+stringData:
+  # The Odoo API key. Scope the Odoo user to only what the assistant needs —
+  # this server acts entirely as that user and enforces no permissions itself.
+  ODOO_PASSWORD: "replace-me"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: odoo-mcp-config
+  labels:
+    app.kubernetes.io/name: odoo-mcp
+data:
+  ODOO_URL: "https://odoo.internal"
+  ODOO_DB: "production"
+  ODOO_USERNAME: "mcp-service-account"
+  ODOO_TIMEOUT: "30"
+  ODOO_MCP_HOST: "0.0.0.0"
+  ODOO_MCP_PORT: "3000"
+  # The Host header arriving via the Ingress is the public name. Without it
+  # here, every request is rejected as a DNS-rebinding attempt.
+  ODOO_MCP_ALLOWED_HOSTS: "mcp.example.com,odoo-mcp.default.svc.cluster.local"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: odoo-mcp
+  labels:
+    app.kubernetes.io/name: odoo-mcp
+spec:
+  # MCP revision 2026-07-28 is stateless — no session affinity, no sticky
+  # routing, no shared store. Replicas scale horizontally without coordination.
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: odoo-mcp
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: odoo-mcp
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: odoo-mcp
+          image: ghcr.io/jldb-xyz/odoo-mcp:latest
+          args: ["--http"]
+          ports:
+            - name: http
+              containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: odoo-mcp-config
+            - secretRef:
+                name: odoo-mcp-credentials
+          # Liveness only restarts a wedged process. It deliberately does not
+          # depend on Odoo: an Odoo outage should not cause a restart storm.
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # Readiness gates traffic on this instance holding an authenticated
+          # Odoo session.
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # The server authenticates to Odoo before it listens, so a slow Odoo
+          # at boot must not be mistaken for a crash loop.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            # readOnlyRootFilesystem needs a writable /tmp; save_doc and
+            # save_sop also write to ./.odoo-mcp, which is ephemeral here —
+            # see the persistence note in docs/DEPLOYMENT.md.
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: odoo-mcp
+  labels:
+    app.kubernetes.io/name: odoo-mcp
+spec:
+  selector:
+    app.kubernetes.io/name: odoo-mcp
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: odoo-mcp
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: odoo-mcp
+---
+# Authentication lives here. This example uses ingress-nginx's external-auth
+# annotations to delegate to an OAuth2 proxy; adapt to your ingress controller.
+# Without something in this position the endpoint is unauthenticated.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: odoo-mcp
+  annotations:
+    nginx.ingress.kubernetes.io/auth-url: "https://oauth.example.com/oauth2/auth"
+    nginx.ingress.kubernetes.io/auth-signin: "https://oauth.example.com/oauth2/start?rd=$escaped_request_uri"
+    # Streamable HTTP responses can be long-lived SSE streams.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [mcp.example.com]
+      secretName: odoo-mcp-tls
+  rules:
+    - host: mcp.example.com
+      http:
+        paths:
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: odoo-mcp
+                port:
+                  name: http

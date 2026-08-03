@@ -46,8 +46,8 @@ describe(`search tools - Odoo ${getOdooVersion()}`, () => {
   });
 
   describe("find_record_by_name", () => {
-    it("finds records by partial name match", async () => {
-      if (skipReason) return;
+    it("finds records by partial name match", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await findRecordByName(client, {
         model: "res.partner",
@@ -73,8 +73,8 @@ describe(`search tools - Odoo ${getOdooVersion()}`, () => {
       expect(found).toBe(true);
     });
 
-    it("finds exact match by name", async () => {
-      if (skipReason) return;
+    it("finds exact match by name", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await findRecordByName(client, {
         model: "res.partner",
@@ -94,8 +94,8 @@ describe(`search tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.exact_match?.id).toBe(testPartnerId);
     });
 
-    it("searches by email field", async () => {
-      if (skipReason) return;
+    it("searches by email field", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await findRecordByName(client, {
         model: "res.partner",
@@ -114,8 +114,8 @@ describe(`search tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.count).toBeGreaterThanOrEqual(1);
     });
 
-    it("returns empty results for non-matching search", async () => {
-      if (skipReason) return;
+    it("returns empty results for non-matching search", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await findRecordByName(client, {
         model: "res.partner",
@@ -135,8 +135,8 @@ describe(`search tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.guidance).toContain("No records found");
     });
 
-    it("returns error for non-existent model", async () => {
-      if (skipReason) return;
+    it("returns error for non-existent model", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await findRecordByName(client, {
         model: "nonexistent.model.xyz",
@@ -147,8 +147,8 @@ describe(`search tools - Odoo ${getOdooVersion()}`, () => {
       expect(result.error).toContain("not found");
     });
 
-    it("returns error for non-existent field", async () => {
-      if (skipReason) return;
+    it("returns error for non-existent field", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await findRecordByName(client, {
         model: "res.partner",
@@ -160,8 +160,8 @@ describe(`search tools - Odoo ${getOdooVersion()}`, () => {
       expect(result.error).toContain("not found");
     });
 
-    it("includes model-specific identifying fields", async () => {
-      if (skipReason) return;
+    it("includes model-specific identifying fields", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await findRecordByName(client, {
         model: "res.partner",
@@ -184,8 +184,8 @@ describe(`search tools - Odoo ${getOdooVersion()}`, () => {
       }
     });
 
-    it("respects limit parameter", async () => {
-      if (skipReason) return;
+    it("respects limit parameter", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await findRecordByName(client, {
         model: "res.partner",
@@ -204,8 +204,8 @@ describe(`search tools - Odoo ${getOdooVersion()}`, () => {
   });
 
   describe("search_records", () => {
-    it("searches with empty domain", async () => {
-      if (skipReason) return;
+    it("searches with empty domain", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await searchRecords(client, {
         model: "res.partner",
@@ -226,8 +226,8 @@ describe(`search tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.total_count).toBeGreaterThanOrEqual(data.count);
     });
 
-    it("searches with domain filter", async () => {
-      if (skipReason) return;
+    it("searches with domain filter", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await searchRecords(client, {
         model: "res.partner",
@@ -244,8 +244,8 @@ describe(`search tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.domain_used).toBeDefined();
     });
 
-    it("searches with complex domain (OR)", async () => {
-      if (skipReason) return;
+    it("searches with complex domain (OR)", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await searchRecords(client, {
         model: "res.partner",
@@ -267,8 +267,8 @@ describe(`search tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.records.some((r) => r.id === testPartnerId)).toBe(true);
     });
 
-    it("returns specific fields", async () => {
-      if (skipReason) return;
+    it("returns specific fields", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await searchRecords(client, {
         model: "res.partner",
@@ -296,8 +296,8 @@ describe(`search tools - Odoo ${getOdooVersion()}`, () => {
       }
     });
 
-    it("count_only returns only count", async () => {
-      if (skipReason) return;
+    it("count_only returns only count", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await searchRecords(client, {
         model: "res.partner",
@@ -316,8 +316,8 @@ describe(`search tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.records).toBeUndefined();
     });
 
-    it("supports pagination with offset", async () => {
-      if (skipReason) return;
+    it("supports pagination with offset", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       // First page
       const page1 = await searchRecords(client, {
@@ -350,8 +350,8 @@ describe(`search tools - Odoo ${getOdooVersion()}`, () => {
       }
     });
 
-    it("supports ordering", async () => {
-      if (skipReason) return;
+    it("supports ordering", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await searchRecords(client, {
         model: "res.partner",
@@ -375,8 +375,8 @@ describe(`search tools - Odoo ${getOdooVersion()}`, () => {
       }
     });
 
-    it("indicates has_more for paginated results", async () => {
-      if (skipReason) return;
+    it("indicates has_more for paginated results", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await searchRecords(client, {
         model: "res.partner",
@@ -397,8 +397,8 @@ describe(`search tools - Odoo ${getOdooVersion()}`, () => {
       }
     });
 
-    it("returns error for invalid fields", async () => {
-      if (skipReason) return;
+    it("returns error for invalid fields", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await searchRecords(client, {
         model: "res.partner",
@@ -410,8 +410,8 @@ describe(`search tools - Odoo ${getOdooVersion()}`, () => {
       expect(result.error).toContain("Invalid fields");
     });
 
-    it("returns error for invalid domain field", async () => {
-      if (skipReason) return;
+    it("returns error for invalid domain field", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await searchRecords(client, {
         model: "res.partner",
@@ -422,8 +422,8 @@ describe(`search tools - Odoo ${getOdooVersion()}`, () => {
       expect(result.error).toContain("Domain validation errors");
     });
 
-    it("handles dotted field names in domain", async () => {
-      if (skipReason) return;
+    it("handles dotted field names in domain", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await searchRecords(client, {
         model: "res.partner",

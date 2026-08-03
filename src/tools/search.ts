@@ -6,17 +6,9 @@ import { z } from "zod";
 import type { Domain, IOdooClient, OdooFieldDef } from "../types/index.js";
 import { normalizeDomain, validateDomain } from "./domain-utils.js";
 import { defineTool } from "./registry.js";
+import { isError } from "./result-utils.js";
 
 // ============ Utility Functions ============
-
-function isError(result: unknown): result is { error: string } {
-  return (
-    typeof result === "object" &&
-    result !== null &&
-    "error" in result &&
-    typeof (result as { error: string }).error === "string"
-  );
-}
 
 /**
  * Model-specific fields to include in search results for better identification
@@ -179,31 +171,14 @@ export async function findRecordByName(
 
 export const findRecordByNameTool = defineTool({
   name: "find_record_by_name",
+  title: "Find Record by Name",
+  annotations: { readOnlyHint: true, openWorldHint: true },
   description:
     "Find Odoo records by name or other text field. " +
     "Resolves human-readable names to record IDs. " +
     "Returns matching records with key identifying fields. " +
     "Use this to look up partner IDs, product IDs, etc. before create/update operations.",
-  inputSchema: {
-    model: z
-      .string()
-      .describe(
-        'Model technical name (e.g., "res.partner", "product.product")',
-      ),
-    name: z.string().describe("Search term to find records by"),
-    field: z
-      .string()
-      .optional()
-      .describe('Field to search in (default: "name")'),
-    operator: z
-      .enum(["=", "ilike", "like", "=ilike", "=like"])
-      .optional()
-      .describe('Search operator (default: "ilike" for partial match)'),
-    limit: z
-      .number()
-      .optional()
-      .describe("Maximum results to return (default: 10, max: 100)"),
-  },
+  inputSchema: FindRecordByNameInputSchema.shape,
   handler: async (client, input) => findRecordByName(client, input),
 });
 
@@ -361,37 +336,13 @@ export async function searchRecords(
 
 export const searchRecordsTool = defineTool({
   name: "search_records",
+  title: "Search Records",
+  annotations: { readOnlyHint: true, openWorldHint: true },
   description:
     "Search Odoo records with automatic field and domain validation. " +
     "Returns matching records with pagination info. " +
     "Validates that all fields and domain conditions reference valid model fields. " +
     "More user-friendly than raw execute_method with built-in error checking.",
-  inputSchema: {
-    model: z.string().describe('Model technical name (e.g., "res.partner")'),
-    domain: z
-      .array(z.unknown())
-      .describe(
-        'Odoo domain filter (e.g., [["is_company", "=", true], ["country_id.code", "=", "US"]])',
-      ),
-    fields: z
-      .array(z.string())
-      .optional()
-      .describe(
-        "Fields to return (validates existence, defaults to key fields)",
-      ),
-    limit: z
-      .number()
-      .optional()
-      .describe("Maximum records to return (default: 100, max: 1000)"),
-    offset: z.number().optional().describe("Number of records to skip"),
-    order: z
-      .string()
-      .optional()
-      .describe('Sort order (e.g., "name asc", "create_date desc")'),
-    count_only: z
-      .boolean()
-      .optional()
-      .describe("If true, only return count without records"),
-  },
+  inputSchema: SearchRecordsInputSchema.shape,
   handler: async (client, input) => searchRecords(client, input),
 });

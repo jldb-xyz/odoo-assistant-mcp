@@ -351,4 +351,76 @@ describe("docs-system", () => {
       expect(sops.map((s) => s.name)).not.toContain("my-doc");
     });
   });
+
+  describe("path traversal containment", () => {
+    // `name` reaches these functions straight from tool input, so it is
+    // attacker-controlled from the model's perspective. Every entry must stay
+    // inside its configured directory.
+    const escapingNames = [
+      "../escaped",
+      "../../escaped",
+      "../../../../../../tmp/escaped",
+      "subdir/../../escaped",
+      "..",
+      "foo/../../bar",
+      "/etc/escaped",
+      "/absolute",
+      "nested/name",
+      "nested\\name",
+      "",
+      ".",
+      // Windows drive-relative names contain no separator but resolve against
+      // that drive's working directory, landing outside the target entirely.
+      "C:escaped",
+      "D:escaped",
+      "c:escaped",
+    ];
+
+    it("refuses to write outside the local directory", () => {
+      for (const name of escapingNames) {
+        const result = saveEntry("docs", name, "pwned", config);
+        expect(result.success, `saveEntry should reject "${name}"`).toBe(false);
+        expect(result.error).toBeDefined();
+      }
+
+      // Nothing may have been written anywhere under the temp root except the
+      // configured local dir, which should not exist or be empty.
+      const localExists = fs.existsSync(config.localDir!);
+      const localFiles = localExists ? fs.readdirSync(config.localDir!) : [];
+      expect(localFiles).toEqual([]);
+      expect(fs.existsSync(path.join(tempDir, "escaped.md"))).toBe(false);
+      expect(fs.existsSync(path.join(tempDir, "..", "escaped.md"))).toBe(false);
+    });
+
+    it("refuses to read outside the configured directories", () => {
+      // Plant a file one level above the local dir; it must stay unreachable.
+      fs.mkdirSync(config.localDir!, { recursive: true });
+      fs.writeFileSync(path.join(tempDir, "secret.md"), "top secret", "utf-8");
+
+      expect(readEntry("docs", "../secret", config)).toBeNull();
+      expect(readEntry("docs", "../../secret", config)).toBeNull();
+      expect(readEntry("docs", "/etc/passwd", config)).toBeNull();
+    });
+
+    it("refuses to delete outside the local directory", () => {
+      fs.mkdirSync(config.localDir!, { recursive: true });
+      const victim = path.join(tempDir, "victim.md");
+      fs.writeFileSync(victim, "do not delete", "utf-8");
+
+      const result = deleteEntry("docs", "../victim", config);
+
+      expect(result.success).toBe(false);
+      expect(fs.existsSync(victim)).toBe(true);
+    });
+
+    it("still allows ordinary names", () => {
+      const saved = saveEntry("docs", "my-doc_v2.final", "# Doc", config);
+      expect(saved.success).toBe(true);
+
+      const read = readEntry("docs", "my-doc_v2.final", config);
+      expect(read?.content).toBe("# Doc");
+
+      expect(deleteEntry("docs", "my-doc_v2.final", config).success).toBe(true);
+    });
+  });
 });

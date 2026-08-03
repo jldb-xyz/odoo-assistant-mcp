@@ -1,21 +1,7 @@
 import { z } from "zod";
 import type { IOdooClient, OdooFieldDef } from "../types/index.js";
 import { defineTool } from "./registry.js";
-
-// ============ Types ============
-
-interface ErrorResult {
-  error: string;
-}
-
-function isError(result: unknown): result is ErrorResult {
-  return (
-    typeof result === "object" &&
-    result !== null &&
-    "error" in result &&
-    typeof (result as ErrorResult).error === "string"
-  );
-}
+import { isError } from "./result-utils.js";
 
 // ============ Constants ============
 
@@ -296,27 +282,12 @@ export async function listModels(
 
 export const listModelsTool = defineTool({
   name: "list_models",
+  title: "List Models",
+  annotations: { readOnlyHint: true, openWorldHint: true },
   description:
     "List and filter Odoo models. Use this to discover available models before querying data. " +
     "Supports filtering by name/label and model type (core vs transient/wizard).",
-  inputSchema: {
-    filter: z
-      .string()
-      .optional()
-      .describe(
-        'Optional search filter - matches against model name or label (e.g., "partner", "sale")',
-      ),
-    category: z
-      .enum(["all", "core", "transient"])
-      .optional()
-      .describe(
-        'Filter by type: "all" (default), "core" (persistent), "transient" (wizards)',
-      ),
-    limit: z
-      .number()
-      .optional()
-      .describe("Max models to return (default: 50, max: 200)"),
-  },
+  inputSchema: ListModelsInputSchema.shape,
   handler: async (client, input) =>
     listModels(client, {
       filter: input.filter,
@@ -397,17 +368,13 @@ export async function getModelSchema(
 
 export const getModelSchemaTool = defineTool({
   name: "get_model_schema",
+  title: "Get Model Schema",
+  annotations: { readOnlyHint: true, openWorldHint: true },
   description:
     "Get detailed field schema for an Odoo model. Returns fields organized by type: " +
     "key fields (id, name, state), relations (many2one, one2many, many2many), and data fields. " +
     "Use this to understand a model's structure before reading/writing data.",
-  inputSchema: {
-    model: z.string().describe('Model technical name (e.g., "res.partner")'),
-    field_types: z
-      .array(z.string())
-      .optional()
-      .describe('Filter to specific types (e.g., ["many2one", "char"])'),
-  },
+  inputSchema: GetModelSchemaInputSchema.shape,
   handler: async (client, input) =>
     getModelSchema(client, {
       model: input.model,
@@ -542,23 +509,13 @@ export async function getModelRelations(
 
 export const getModelRelationsTool = defineTool({
   name: "get_model_relations",
+  title: "Get Model Relations",
+  annotations: { readOnlyHint: true, openWorldHint: true },
   description:
     "Show relationships to/from an Odoo model. Outgoing = fields on this model that reference others. " +
     "Incoming = fields on other models that reference this one. " +
     "Essential for understanding data flow and building complex queries with joins.",
-  inputSchema: {
-    model: z.string().describe('Model technical name (e.g., "res.partner")'),
-    direction: z
-      .enum(["both", "outgoing", "incoming"])
-      .optional()
-      .describe(
-        '"both" (default), "outgoing" (this model to others), "incoming" (others to this)',
-      ),
-    include_technical: z
-      .boolean()
-      .optional()
-      .describe("Include technical models (ir.*, mail.*, etc.)"),
-  },
+  inputSchema: GetModelRelationsInputSchema.shape,
   handler: async (client, input) =>
     getModelRelations(client, {
       model: input.model,
@@ -675,13 +632,13 @@ export async function getCreateRequirements(
 
 export const getCreateRequirementsTool = defineTool({
   name: "get_create_requirements",
+  title: "Get Create Requirements",
+  annotations: { readOnlyHint: true, openWorldHint: true },
   description:
     "Show required fields for creating records on an Odoo model. " +
     "Returns fields that must be provided vs those with defaults. " +
     "Essential before calling create() to avoid validation errors.",
-  inputSchema: {
-    model: z.string().describe('Model technical name (e.g., "res.partner")'),
-  },
+  inputSchema: GetCreateRequirementsInputSchema.shape,
   handler: async (client, input) => getCreateRequirements(client, input),
 });
 
@@ -779,19 +736,13 @@ export async function getSelectionValues(
 
 export const getSelectionValuesTool = defineTool({
   name: "get_selection_values",
+  title: "Get Selection Values",
+  annotations: { readOnlyHint: true, openWorldHint: true },
   description:
     "Get valid values for selection (dropdown) fields on an Odoo model. " +
     "Returns the allowed values with their display labels. " +
     "Use this before setting selection fields to ensure valid values.",
-  inputSchema: {
-    model: z.string().describe('Model technical name (e.g., "sale.order")'),
-    field: z
-      .string()
-      .optional()
-      .describe(
-        "Specific field name. If omitted, returns all selection fields on the model.",
-      ),
-  },
+  inputSchema: GetSelectionValuesInputSchema.shape,
   handler: async (client, input) => getSelectionValues(client, input),
 });
 
@@ -870,14 +821,13 @@ export async function explainField(
 
 export const explainFieldTool = defineTool({
   name: "explain_field",
+  title: "Explain Field",
+  annotations: { readOnlyHint: true, openWorldHint: true },
   description:
     "Get detailed information about a specific field on an Odoo model. " +
     "Returns type, constraints, relation details, selection values, and usage guidance. " +
     "Use this to understand how to read/write a specific field correctly.",
-  inputSchema: {
-    model: z.string().describe('Model technical name (e.g., "res.partner")'),
-    field: z.string().describe('Field name (e.g., "partner_id", "state")'),
-  },
+  inputSchema: ExplainFieldInputSchema.shape,
   handler: async (client, input) => explainField(client, input),
 });
 
@@ -983,25 +933,13 @@ export async function getRecordSample(
 
 export const getRecordSampleTool = defineTool({
   name: "get_record_sample",
+  title: "Get Record Sample",
+  annotations: { readOnlyHint: true, openWorldHint: true },
   description:
     "Fetch one example record from an Odoo model to see real data structure. " +
     "Returns actual field values with their types. " +
     "Useful for understanding data format before building queries.",
-  inputSchema: {
-    model: z.string().describe('Model technical name (e.g., "res.partner")'),
-    domain: z
-      .array(z.unknown())
-      .optional()
-      .describe(
-        'Optional domain filter (e.g., [["active", "=", true]]). Defaults to [].',
-      ),
-    fields: z
-      .array(z.string())
-      .optional()
-      .describe(
-        "Optional field names to include. Defaults to: id, name, display_name, active, state, create_date, write_date.",
-      ),
-  },
+  inputSchema: GetRecordSampleInputSchema.shape,
   handler: async (client, input) => getRecordSample(client, input),
 });
 
@@ -1157,24 +1095,13 @@ export async function checkDomainValidity(
 
 export const validateDomainTool = defineTool({
   name: "validate_domain",
+  title: "Validate Domain",
+  annotations: { readOnlyHint: true, openWorldHint: true },
   description:
     "Check if an Odoo domain filter is syntactically valid and fields exist. " +
     "Catches common errors like invalid field names, wrong operators, and type mismatches. " +
     "Optionally test-executes the domain to verify it works at runtime.",
-  inputSchema: {
-    model: z.string().describe('Model technical name (e.g., "res.partner")'),
-    domain: z
-      .array(z.unknown())
-      .describe(
-        'Domain to validate (e.g., [["name", "ilike", "test"], ["active", "=", true]])',
-      ),
-    test_execution: z
-      .boolean()
-      .optional()
-      .describe(
-        "If true, also executes search_count to verify domain works. Default: false.",
-      ),
-  },
+  inputSchema: ValidateDomainInputSchema.shape,
   handler: async (client, input) =>
     checkDomainValidity(client, {
       model: input.model,

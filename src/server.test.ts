@@ -4,11 +4,13 @@ import {
   _resetClient,
   _setClient,
   createServer,
+  FALLBACK_SERVER_VERSION,
   formatToolResult,
   getClient,
   initializeClient,
   logEnvironment,
   runServer,
+  SERVER_VERSION,
   type ServerDependencies,
 } from "./server.js";
 import { MockClientBuilder } from "./test-utils/mock-client.js";
@@ -198,25 +200,45 @@ describe("server", () => {
       _resetClient();
     });
 
-    it("initializes client and starts server with injected dependencies", async () => {
+    it("initializes client and serves stdio with injected dependencies", async () => {
       const mockClient =
         new MockClientBuilder().build() as unknown as OdooClient;
-      const mockTransport = { close: vi.fn() };
-      const mockServer = {
-        connect: vi.fn().mockResolvedValue(undefined),
-      };
+      const mockServer = { connect: vi.fn() };
+      const serve = vi.fn().mockReturnValue({ close: vi.fn() });
 
       await runServer({
         initClient: async () => mockClient,
-        createTransport: () => mockTransport,
         createMcpServer: () => mockServer as never,
+        serve,
       });
 
-      expect(mockServer.connect).toHaveBeenCalledWith(mockTransport);
+      expect(serve).toHaveBeenCalledTimes(1);
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         "=== ODOO MCP SERVER STARTING ===",
       );
       expect(consoleErrorSpy).toHaveBeenCalledWith("MCP server running");
+    });
+
+    it("passes a factory that serveStdio invokes per connection", async () => {
+      const mockClient =
+        new MockClientBuilder().build() as unknown as OdooClient;
+      const mockServer = { connect: vi.fn() };
+      const createMcpServer = vi.fn().mockReturnValue(mockServer);
+      const serve = vi.fn().mockReturnValue({ close: vi.fn() });
+
+      await runServer({
+        initClient: async () => mockClient,
+        createMcpServer: createMcpServer as never,
+        serve,
+      });
+
+      // The factory is handed over unbuilt — serveStdio pins one instance per
+      // connection, so nothing should be constructed at startup.
+      expect(createMcpServer).not.toHaveBeenCalled();
+
+      const factory = serve.mock.calls[0]?.[0] as () => unknown;
+      expect(factory()).toBe(mockServer);
+      expect(createMcpServer).toHaveBeenCalledTimes(1);
     });
 
     it("sets global client after initialization", async () => {
@@ -225,8 +247,8 @@ describe("server", () => {
 
       await runServer({
         initClient: async () => mockClient,
-        createTransport: () => ({}),
         createMcpServer: () => ({ connect: vi.fn() }) as never,
+        serve: vi.fn().mockReturnValue({ close: vi.fn() }),
       });
 
       expect(getClient()).toBe(mockClient);
@@ -238,13 +260,34 @@ describe("server", () => {
 
       await runServer({
         initClient: async () => mockClient,
-        createTransport: () => ({}),
         createMcpServer: () => ({ connect: vi.fn() }) as never,
+        serve: vi.fn().mockReturnValue({ close: vi.fn() }),
       });
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining("Node.js version:"),
       );
+    });
+  });
+
+  describe("server identity", () => {
+    it("advertises the package version, not a hardcoded one", async () => {
+      const pkg = (await import("../package.json", {
+        with: { type: "json" },
+      })) as { default: { version: string } };
+
+      expect(SERVER_VERSION).toBe(pkg.default.version);
+    });
+
+    it("keeps the no-filesystem fallback in step with package.json", async () => {
+      // Runtimes without a module-relative filesystem (Cloudflare Workers) use
+      // FALLBACK_SERVER_VERSION. Nothing else would catch it going stale, and
+      // it is reported to clients as serverInfo.
+      const pkg = (await import("../package.json", {
+        with: { type: "json" },
+      })) as { default: { version: string } };
+
+      expect(FALLBACK_SERVER_VERSION).toBe(pkg.default.version);
     });
   });
 

@@ -40,8 +40,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
   });
 
   describe("list_models", () => {
-    it("lists models without filter", async () => {
-      if (skipReason) return;
+    it("lists models without filter", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await listModels(client, { limit: 10 });
 
@@ -71,8 +71,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.models[0]).toHaveProperty("field_count");
     });
 
-    it("filters models by name", async () => {
-      if (skipReason) return;
+    it("filters models by name", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await listModels(client, {
         filter: "partner",
@@ -96,8 +96,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.models.some((m) => m.model === "res.partner")).toBe(true);
     });
 
-    it("filters by category core", async () => {
-      if (skipReason) return;
+    it("filters by category core", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await listModels(client, {
         category: "core",
@@ -115,8 +115,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
       }
     });
 
-    it("filters by category transient", async () => {
-      if (skipReason) return;
+    it("filters by category transient", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await listModels(client, {
         category: "transient",
@@ -136,8 +136,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
   });
 
   describe("get_model_schema", () => {
-    it("returns schema for res.partner", async () => {
-      if (skipReason) return;
+    it("returns schema for res.partner", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await getModelSchema(client, { model: "res.partner" });
 
@@ -160,8 +160,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.key_fields).toHaveProperty("name");
     });
 
-    it("filters fields by type", async () => {
-      if (skipReason) return;
+    it("filters fields by type", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await getModelSchema(client, {
         model: "res.partner",
@@ -179,8 +179,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
       }
     });
 
-    it("returns error for non-existent model", async () => {
-      if (skipReason) return;
+    it("returns error for non-existent model", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await getModelSchema(client, {
         model: "nonexistent.model.xyz",
@@ -192,8 +192,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
   });
 
   describe("get_model_relations", () => {
-    it("returns outgoing relations for res.partner", async () => {
-      if (skipReason) return;
+    it("returns outgoing relations for res.partner", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await getModelRelations(client, {
         model: "res.partner",
@@ -226,8 +226,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
       }
     });
 
-    it("returns incoming relations for res.partner", async () => {
-      if (skipReason) return;
+    it("returns incoming relations for res.partner", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await getModelRelations(client, {
         model: "res.partner",
@@ -248,8 +248,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
       expect(Array.isArray(data.incoming_relations)).toBe(true);
     });
 
-    it("returns both directions", async () => {
-      if (skipReason) return;
+    it("returns both directions", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await getModelRelations(client, {
         model: "res.partner",
@@ -268,8 +268,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
   });
 
   describe("get_create_requirements", () => {
-    it("returns create requirements for res.partner", async () => {
-      if (skipReason) return;
+    it("returns create requirements for res.partner", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await getCreateRequirements(client, {
         model: "res.partner",
@@ -293,8 +293,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.guidance).toBeDefined();
     });
 
-    it("returns error for non-existent model", async () => {
-      if (skipReason) return;
+    it("returns error for non-existent model", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await getCreateRequirements(client, {
         model: "nonexistent.model.xyz",
@@ -305,8 +305,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
   });
 
   describe("get_selection_values", () => {
-    it("lists all selection fields on res.partner", async () => {
-      if (skipReason) return;
+    it("lists all selection fields on res.partner", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await getSelectionValues(client, { model: "res.partner" });
 
@@ -328,8 +328,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.count).toBeGreaterThanOrEqual(0);
     });
 
-    it("returns values for a specific selection field", async () => {
-      if (skipReason) return;
+    it("returns values for a specific selection field", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       // res.partner has 'type' as a selection field
       const result = await getSelectionValues(client, {
@@ -357,8 +357,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
       }
     });
 
-    it("returns error for non-selection field", async () => {
-      if (skipReason) return;
+    it("returns error for non-selection field", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await getSelectionValues(client, {
         model: "res.partner",
@@ -371,8 +371,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
   });
 
   describe("explain_field", () => {
-    it("explains a char field", async () => {
-      if (skipReason) return;
+    it("explains a char field", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await explainField(client, {
         model: "res.partner",
@@ -397,8 +397,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.example_value).toBeDefined();
     });
 
-    it("explains a many2one field", async () => {
-      if (skipReason) return;
+    it("explains a many2one field", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await explainField(client, {
         model: "res.partner",
@@ -420,8 +420,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.relation.target_model).toBe("res.country");
     });
 
-    it("explains a selection field with values", async () => {
-      if (skipReason) return;
+    it("explains a selection field with values", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await explainField(client, {
         model: "res.partner",
@@ -439,8 +439,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
       expect(Array.isArray(data.selection_values)).toBe(true);
     });
 
-    it("returns error for non-existent field", async () => {
-      if (skipReason) return;
+    it("returns error for non-existent field", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await explainField(client, {
         model: "res.partner",
@@ -453,8 +453,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
   });
 
   describe("get_record_sample", () => {
-    it("returns a sample record from res.partner", async () => {
-      if (skipReason) return;
+    it("returns a sample record from res.partner", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await getRecordSample(client, { model: "res.partner" });
 
@@ -474,8 +474,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
       }
     });
 
-    it("returns sample with specific fields", async () => {
-      if (skipReason) return;
+    it("returns sample with specific fields", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await getRecordSample(client, {
         model: "res.partner",
@@ -494,8 +494,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.record).toHaveProperty("email");
     });
 
-    it("applies domain filter", async () => {
-      if (skipReason) return;
+    it("applies domain filter", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await getRecordSample(client, {
         model: "res.partner",
@@ -506,8 +506,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
       // Result may be null if no companies exist, which is valid
     });
 
-    it("returns error for invalid fields", async () => {
-      if (skipReason) return;
+    it("returns error for invalid fields", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await getRecordSample(client, {
         model: "res.partner",
@@ -520,8 +520,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
   });
 
   describe("validate_domain", () => {
-    it("validates a correct domain", async () => {
-      if (skipReason) return;
+    it("validates a correct domain", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await checkDomainValidity(client, {
         model: "res.partner",
@@ -550,8 +550,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.validated_conditions).toHaveLength(2);
     });
 
-    it("detects invalid field names", async () => {
-      if (skipReason) return;
+    it("detects invalid field names", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await checkDomainValidity(client, {
         model: "res.partner",
@@ -569,8 +569,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.errors[0]).toContain("not found");
     });
 
-    it("detects invalid operators", async () => {
-      if (skipReason) return;
+    it("detects invalid operators", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await checkDomainValidity(client, {
         model: "res.partner",
@@ -587,8 +587,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.errors[0]).toContain("Invalid operator");
     });
 
-    it("handles logical operators", async () => {
-      if (skipReason) return;
+    it("handles logical operators", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await checkDomainValidity(client, {
         model: "res.partner",
@@ -605,8 +605,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.validated_conditions).toHaveLength(2);
     });
 
-    it("validates with test execution", async () => {
-      if (skipReason) return;
+    it("validates with test execution", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await checkDomainValidity(client, {
         model: "res.partner",
@@ -629,8 +629,8 @@ describe(`introspection tools - Odoo ${getOdooVersion()}`, () => {
       expect(typeof data.execution_test.count).toBe("number");
     });
 
-    it("supports dotted field names for related fields", async () => {
-      if (skipReason) return;
+    it("supports dotted field names for related fields", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await checkDomainValidity(client, {
         model: "res.partner",

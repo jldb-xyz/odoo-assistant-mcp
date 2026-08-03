@@ -1,3 +1,4 @@
+import type { ToolAnnotations } from "@modelcontextprotocol/server";
 import type { ZodRawShape, z } from "zod";
 import type { IOdooClient } from "../types/index.js";
 
@@ -21,9 +22,22 @@ export interface ToolDefinition {
   name: string;
 
   /**
+   * Short human-readable name shown in client UIs (e.g. "Search Records")
+   */
+  title?: string;
+
+  /**
    * Human-readable description of what the tool does
    */
   description: string;
+
+  /**
+   * Behavioural hints for clients: whether the tool only reads, whether it can
+   * destroy data, whether repeat calls are safe, and whether it touches an
+   * external system. These are hints, not guarantees — clients must not treat
+   * them as a security boundary.
+   */
+  annotations?: ToolAnnotations;
 
   /**
    * Zod schema shape for validating input parameters
@@ -43,7 +57,9 @@ export interface ToolDefinition {
  */
 export interface TypedToolDefinition<TShape extends ZodRawShape> {
   name: string;
+  title?: string;
   description: string;
+  annotations?: ToolAnnotations;
   inputSchema: TShape;
   handler: (
     client: IOdooClient,

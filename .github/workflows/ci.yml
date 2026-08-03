@@ -6,38 +6,66 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        node-version: [18, 20, 22]
+        node-version: [22, 24, 26]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Enable Corepack
-        run: corepack enable
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
 
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: yarn
+          cache: pnpm
 
       - name: Install dependencies
-        run: yarn install --immutable
+        run: pnpm install --frozen-lockfile
 
       - name: Run linter
-        run: yarn lint
+        run: pnpm lint
 
       - name: Run type check
-        run: yarn typecheck
+        run: pnpm typecheck
 
       - name: Run tests
-        run: yarn test
+        run: pnpm test
 
       - name: Build
-        run: yarn build
+        run: pnpm build
+
+  mutation:
+    name: Mutation testing
+    runs-on: ubuntu-latest
+    # Verifies the tests can actually detect the bugs they claim to cover.
+    # Runs once rather than across the Node matrix — it is checking the test
+    # suite, not runtime compatibility, and each mutant costs a full test run.
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run mutation tests
+        run: pnpm test:mutation

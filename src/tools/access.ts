@@ -5,17 +5,9 @@
 import { z } from "zod";
 import type { IOdooClient } from "../types/index.js";
 import { defineTool } from "./registry.js";
+import { isError } from "./result-utils.js";
 
 // ============ Utility Functions ============
-
-function isError(result: unknown): result is { error: string } {
-  return (
-    typeof result === "object" &&
-    result !== null &&
-    "error" in result &&
-    typeof (result as { error: string }).error === "string"
-  );
-}
 
 /**
  * Parse Odoo access error message to extract useful information
@@ -218,26 +210,13 @@ export async function checkAccess(
 
 export const checkAccessTool = defineTool({
   name: "check_access",
+  title: "Check Access",
+  annotations: { readOnlyHint: true, openWorldHint: true },
   description:
     "Check if the current user has permission to perform an operation on an Odoo model. " +
     "Checks both model-level access rights and record-level access rules. " +
     "Use this before attempting write operations to avoid cryptic access errors. " +
     "Returns detailed information about what's allowed and why access was denied.",
-  inputSchema: {
-    model: z.string().describe('Model technical name (e.g., "res.partner")'),
-    operation: z
-      .enum(VALID_OPERATIONS)
-      .describe('Operation to check: "read", "write", "create", or "unlink"'),
-    record_ids: z
-      .array(z.number())
-      .optional()
-      .describe("Specific record IDs to check access for (optional)"),
-    raise_exception: z
-      .boolean()
-      .optional()
-      .describe(
-        "If true, check will fail on access denied. If false (default), returns access info without failing.",
-      ),
-  },
+  inputSchema: CheckAccessInputSchema.shape,
   handler: async (client, input) => checkAccess(client, input),
 });

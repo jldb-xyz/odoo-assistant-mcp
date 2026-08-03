@@ -8,8 +8,8 @@ Analyze all uncommitted changes, ensure quality standards, group logically, and 
 
 **Run quality checks in parallel:**
 ```bash
-yarn typecheck
-yarn lint
+pnpm typecheck
+pnpm lint
 ```
 
 **If issues found:**

@@ -15,7 +15,7 @@ export const ExecuteMethodInputSchema = z.object({
     .default([])
     .describe("Positional arguments"),
   kwargs: z
-    .record(z.unknown())
+    .record(z.string(), z.unknown())
     .optional()
     .default({})
     .describe("Keyword arguments"),
@@ -72,13 +72,15 @@ export async function executeMethod(
  */
 export const executeMethodTool = defineTool({
   name: "execute_method",
-  description: "Execute a custom method on an Odoo model",
-  inputSchema: {
-    model: ExecuteMethodInputSchema.shape.model,
-    method: ExecuteMethodInputSchema.shape.method,
-    args: z.array(z.unknown()).optional().describe("Positional arguments"),
-    kwargs: z.record(z.unknown()).optional().describe("Keyword arguments"),
+  title: "Execute Odoo Method",
+  annotations: {
+    readOnlyHint: false,
+    destructiveHint: true,
+    idempotentHint: false,
+    openWorldHint: true,
   },
+  description: "Execute a custom method on an Odoo model",
+  inputSchema: ExecuteMethodInputSchema.shape,
   handler: async (client, input) => {
     return executeMethod(client, {
       model: input.model,

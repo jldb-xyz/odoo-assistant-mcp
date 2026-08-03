@@ -397,6 +397,30 @@ describe("action tools", () => {
       );
     });
 
+    it("invokes the action the caller asked for", async () => {
+      // Deliberately not action_confirm: this is a destructive tool, and
+      // running a different workflow action than the one requested (cancel vs
+      // confirm) must not be able to pass unnoticed.
+      vi.mocked(mockClient.getModelFields).mockResolvedValue({
+        id: { type: "integer", string: "ID" },
+      });
+      vi.mocked(mockClient.readRecords).mockResolvedValue([]);
+      vi.mocked(mockClient.execute).mockResolvedValue(true);
+
+      await executeAction(mockClient, {
+        model: "sale.order",
+        action: "action_cancel",
+        record_ids: [7, 8],
+      });
+
+      expect(mockClient.execute).toHaveBeenCalledWith(
+        "sale.order",
+        "action_cancel",
+        [[7, 8]],
+        {},
+      );
+    });
+
     it("returns error for non-existent action", async () => {
       vi.mocked(mockClient.getModelFields).mockResolvedValue({
         id: { type: "integer", string: "ID" },
@@ -410,6 +434,33 @@ describe("action tools", () => {
       const result = await executeAction(mockClient, {
         model: "sale.order",
         action: "invalid_action",
+        record_ids: [1],
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("does not exist");
+      expect(result.error).toContain("list_available_actions");
+    });
+
+    it("recognises the class-attribute error phrasing used by Odoo 14", async () => {
+      // Odoo 14 raises AttributeError against the class ("type object 'x' has
+      // no attribute 'y'"), putting the model name between "object" and "has".
+      // Matching the contiguous "object has no attribute" missed it, so a
+      // missing action surfaced as a raw Python traceback.
+      vi.mocked(mockClient.getModelFields).mockResolvedValue({
+        id: { type: "integer", string: "ID" },
+      });
+      vi.mocked(mockClient.readRecords).mockResolvedValue([]);
+      vi.mocked(mockClient.execute).mockRejectedValue(
+        new Error(
+          "XML-RPC fault: Traceback (most recent call last):\n" +
+            "AttributeError: type object 'res.partner' has no attribute 'nonexistent_action_xyz'",
+        ),
+      );
+
+      const result = await executeAction(mockClient, {
+        model: "res.partner",
+        action: "nonexistent_action_xyz",
         record_ids: [1],
       });
 

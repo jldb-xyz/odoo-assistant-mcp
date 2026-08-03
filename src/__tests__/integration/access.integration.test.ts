@@ -45,8 +45,8 @@ describe(`access tools - Odoo ${getOdooVersion()}`, () => {
   });
 
   describe("check_access", () => {
-    it("checks read access on res.partner model", async () => {
-      if (skipReason) return;
+    it("checks read access on res.partner model", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await checkAccess(client, {
         model: "res.partner",
@@ -66,8 +66,8 @@ describe(`access tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.has_access).toBe(true);
     });
 
-    it("checks write access on res.partner model", async () => {
-      if (skipReason) return;
+    it("checks write access on res.partner model", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await checkAccess(client, {
         model: "res.partner",
@@ -83,8 +83,8 @@ describe(`access tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.has_access).toBe(true);
     });
 
-    it("checks create access on res.partner model", async () => {
-      if (skipReason) return;
+    it("checks create access on res.partner model", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await checkAccess(client, {
         model: "res.partner",
@@ -99,8 +99,8 @@ describe(`access tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.has_access).toBe(true);
     });
 
-    it("checks unlink access on res.partner model", async () => {
-      if (skipReason) return;
+    it("checks unlink access on res.partner model", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await checkAccess(client, {
         model: "res.partner",
@@ -115,8 +115,10 @@ describe(`access tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.has_access).toBe(true);
     });
 
-    it("checks record-level access for specific records", async () => {
-      if (skipReason || testPartnerId === null) return;
+    it("checks record-level access for specific records", async (ctx) => {
+      if (skipReason) ctx.skip();
+      // Odoo is up, so a missing fixture is a real failure, not a skip.
+      expect(testPartnerId).not.toBeNull();
 
       const result = await checkAccess(client, {
         model: "res.partner",
@@ -139,8 +141,10 @@ describe(`access tools - Odoo ${getOdooVersion()}`, () => {
       expect(typeof data.has_access).toBe("boolean");
     });
 
-    it("checks access for multiple records", async () => {
-      if (skipReason || testPartnerId === null) return;
+    it("checks access for multiple records", async (ctx) => {
+      if (skipReason) ctx.skip();
+      // Odoo is up, so a missing fixture is a real failure, not a skip.
+      expect(testPartnerId).not.toBeNull();
 
       // Get admin partner (id=1 or close to it)
       const result = await checkAccess(client, {
@@ -157,8 +161,8 @@ describe(`access tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.record_access).toBeDefined();
     });
 
-    it("detects non-existent records", async () => {
-      if (skipReason) return;
+    it("detects non-existent records", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       // Very high ID unlikely to exist
       const nonExistentId = 99999999;
@@ -178,8 +182,8 @@ describe(`access tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.denied_records).toContain(nonExistentId);
     });
 
-    it("returns error with raise_exception for denied access", async () => {
-      if (skipReason) return;
+    it("returns error with raise_exception for denied access", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       // Try to access non-existent record with raise_exception
       const nonExistentId = 99999999;
@@ -194,8 +198,8 @@ describe(`access tools - Odoo ${getOdooVersion()}`, () => {
       expect(result.error).toContain("Access denied");
     });
 
-    it("returns error for non-existent model", async () => {
-      if (skipReason) return;
+    it("returns error for non-existent model", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await checkAccess(client, {
         model: "nonexistent.model.xyz",
@@ -206,8 +210,8 @@ describe(`access tools - Odoo ${getOdooVersion()}`, () => {
       expect(result.error).toContain("not found");
     });
 
-    it("checks access on ir.model (internal model)", async () => {
-      if (skipReason) return;
+    it("checks access on ir.model (internal model)", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await checkAccess(client, {
         model: "ir.model",
@@ -223,8 +227,8 @@ describe(`access tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.has_access).toBe(true);
     });
 
-    it("checks write access on ir.model (may be restricted)", async () => {
-      if (skipReason) return;
+    it("checks write access on ir.model (may be restricted)", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await checkAccess(client, {
         model: "ir.model",

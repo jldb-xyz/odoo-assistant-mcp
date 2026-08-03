@@ -120,6 +120,45 @@ describe("search tools", () => {
       expect(data.matches).toHaveLength(2);
     });
 
+    it("passes the caller's limit through to Odoo", async () => {
+      vi.mocked(mockClient.getModelFields).mockResolvedValue({
+        id: { type: "integer", string: "ID" },
+        name: { type: "char", string: "Name" },
+      });
+      vi.mocked(mockClient.searchRead).mockResolvedValue([]);
+
+      await findRecordByName(mockClient, {
+        model: "res.partner",
+        name: "John",
+        limit: 3,
+      });
+
+      expect(mockClient.searchRead).toHaveBeenCalledWith(
+        "res.partner",
+        expect.anything(),
+        expect.objectContaining({ limit: 3 }),
+      );
+    });
+
+    it("defaults to a limit of 10 when none is given", async () => {
+      vi.mocked(mockClient.getModelFields).mockResolvedValue({
+        id: { type: "integer", string: "ID" },
+        name: { type: "char", string: "Name" },
+      });
+      vi.mocked(mockClient.searchRead).mockResolvedValue([]);
+
+      await findRecordByName(mockClient, {
+        model: "res.partner",
+        name: "John",
+      });
+
+      expect(mockClient.searchRead).toHaveBeenCalledWith(
+        "res.partner",
+        expect.anything(),
+        expect.objectContaining({ limit: 10 }),
+      );
+    });
+
     it("returns single match as exact_match", async () => {
       vi.mocked(mockClient.getModelFields).mockResolvedValue({
         id: { type: "integer", string: "ID" },
@@ -446,6 +485,90 @@ describe("search tools", () => {
       expect(data.has_more).toBe(true);
       expect(data.total_count).toBe(50);
       expect((data.records as unknown[]).length).toBe(10);
+    });
+
+    it("fetches one row beyond the limit to detect more pages", async () => {
+      vi.mocked(mockClient.getModelFields).mockResolvedValue({
+        id: { type: "integer", string: "ID" },
+        name: { type: "char", string: "Name" },
+        display_name: { type: "char", string: "Display Name" },
+      });
+      vi.mocked(mockClient.searchRead).mockResolvedValue([]);
+      vi.mocked(mockClient.execute).mockResolvedValue(0);
+
+      await searchRecords(mockClient, {
+        model: "res.partner",
+        domain: [],
+        limit: 25,
+      });
+
+      // Without the extra row there is no way to know whether more exist.
+      expect(mockClient.searchRead).toHaveBeenCalledWith(
+        "res.partner",
+        [],
+        expect.objectContaining({ limit: 26 }),
+      );
+    });
+
+    it("reports has_more false when exactly one page of records exists", async () => {
+      vi.mocked(mockClient.getModelFields).mockResolvedValue({
+        id: { type: "integer", string: "ID" },
+        name: { type: "char", string: "Name" },
+        display_name: { type: "char", string: "Display Name" },
+      });
+
+      // Odoo honours the limit it is given, so asking for limit+1 and getting
+      // exactly `limit` back means this is the last page.
+      vi.mocked(mockClient.searchRead).mockImplementation(
+        async (_model, _domain, options) => {
+          const available = 10;
+          const requested = options?.limit ?? available;
+          return Array.from(
+            { length: Math.min(available, requested) },
+            (_, i) => ({ id: i + 1, name: `Record ${i + 1}` }),
+          );
+        },
+      );
+      vi.mocked(mockClient.execute).mockResolvedValue(10);
+
+      const result = await searchRecords(mockClient, {
+        model: "res.partner",
+        domain: [],
+        limit: 10,
+      });
+
+      const data = result.result as Record<string, unknown>;
+      expect(data.has_more).toBe(false);
+      expect((data.records as unknown[]).length).toBe(10);
+    });
+
+    it("honours the caller's limit when more records are available", async () => {
+      vi.mocked(mockClient.getModelFields).mockResolvedValue({
+        id: { type: "integer", string: "ID" },
+        name: { type: "char", string: "Name" },
+        display_name: { type: "char", string: "Display Name" },
+      });
+      vi.mocked(mockClient.searchRead).mockImplementation(
+        async (_model, _domain, options) => {
+          const available = 500;
+          const requested = options?.limit ?? available;
+          return Array.from(
+            { length: Math.min(available, requested) },
+            (_, i) => ({ id: i + 1, name: `Record ${i + 1}` }),
+          );
+        },
+      );
+      vi.mocked(mockClient.execute).mockResolvedValue(500);
+
+      const result = await searchRecords(mockClient, {
+        model: "res.partner",
+        domain: [],
+        limit: 5,
+      });
+
+      const data = result.result as Record<string, unknown>;
+      expect((data.records as unknown[]).length).toBe(5);
+      expect(data.has_more).toBe(true);
     });
 
     it("returns error for non-existent model", async () => {

@@ -4,10 +4,19 @@
   "description": "MCP server for Odoo ERP integration",
   "license": "MIT",
   "type": "module",
-  "packageManager": "yarn@4.9.2",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "bin": "./dist/index.js",
+  "packageManager": "pnpm@11.18.0",
+  "main": "./dist/lib.js",
+  "types": "./dist/lib.d.ts",
+  "bin": {
+    "odoo-mcp": "./dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/lib.d.ts",
+      "default": "./dist/lib.js"
+    },
+    "./package.json": "./package.json"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jldb-xyz/odoo-assistant-mcp.git"
@@ -26,14 +35,15 @@
   ],
   "scripts": {
     "build": "tsc && mkdir -p dist/docs && cp src/docs/*.md dist/docs/",
-    "dev": "swc src -d dist --watch --source-maps",
+    "dev": "tsc --watch",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:llm": "yarn test:unit:llm",
+    "test:llm": "pnpm test:unit:llm",
     "test:unit:llm": "vitest run --reporter=vitest-llm-reporter",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:mutation": "node scripts/mutation-test.mjs",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:integration:llm": "vitest run --config vitest.integration.config.ts --reporter=vitest-llm-reporter",
     "test:integration:14": "ODOO_VERSION=14 vitest run --config vitest.integration.config.ts",
@@ -64,35 +74,33 @@
     "docker:wait:17": "./scripts/wait-for-odoo.sh localhost 8017",
     "docker:wait:18": "./scripts/wait-for-odoo.sh localhost 8018",
     "docker:wait:19": "./scripts/wait-for-odoo.sh localhost 8019",
-    "lint": "biome check src/",
-    "lint:fix": "biome check --write src/",
-    "format": "biome format --write src/",
+    "lint": "biome check",
+    "lint:fix": "biome check --write",
+    "format": "biome format --write",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "yarn build && changeset publish"
+    "release": "pnpm build && changeset publish"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.25.2",
-    "xlsx": "^0.18.5",
+    "@modelcontextprotocol/node": "^2.0.0",
+    "@modelcontextprotocol/server": "^2.0.0",
+    "exceljs": "^4.4.0",
     "xmlrpc": "^1.3.2",
-    "zod": "^3.25.0"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.10",
-    "@changesets/changelog-github": "^0.5.2",
-    "@changesets/cli": "^2.29.8",
-    "@swc/cli": "^0.6.0",
-    "@swc/core": "^1.10.0",
-    "@types/express": "^5.0.6",
-    "@types/node": "^22.0.0",
+    "@biomejs/biome": "^2.5.6",
+    "@changesets/changelog-github": "^0.7.0",
+    "@changesets/cli": "^2.31.1",
+    "@modelcontextprotocol/client": "2.0.0",
+    "@types/node": "^26.1.2",
     "@types/xmlrpc": "^1.3.10",
-    "@vitest/coverage-v8": "^4.0.16",
-    "chokidar": "^5.0.0",
-    "typescript": "^5.9.3",
-    "vitest": "^4.0.16",
-    "vitest-llm-reporter": "^1.2.1"
+    "@vitest/coverage-v8": "^4.1.10",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10",
+    "vitest-llm-reporter": "^1.2.2"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.13.0"
   }
 }

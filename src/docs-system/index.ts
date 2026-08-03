@@ -3,8 +3,30 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+/**
+ * Directory this module was loaded from, used to locate the bundled docs.
+ *
+ * Resolved lazily and defensively: on runtimes without a module-relative
+ * filesystem (Cloudflare Workers) `import.meta.url` is not a file URL and this
+ * throws. At module scope that took down the entire server on import, even for
+ * callers that never touch a doc.
+ */
+function moduleDir(): string | null {
+  try {
+    return path.dirname(fileURLToPath(import.meta.url));
+  } catch {
+    return null;
+  }
+}
+
+/** A directory that may not be resolvable on every runtime. */
+function safeDir(resolve: () => string): string | null {
+  try {
+    return resolve();
+  } catch {
+    return null;
+  }
+}
 
 export interface DocEntry {
   name: string;
@@ -25,14 +47,63 @@ export interface PathConfig {
 }
 
 /**
- * Get default paths for docs/SOPs
+ * Get default paths for docs/SOPs.
+ *
+ * A directory that cannot be resolved on this runtime becomes an empty string,
+ * which `getDocPaths` filters out — that layer is simply unavailable rather
+ * than fatal.
  */
 function getDefaultPaths(type: "docs" | "sops"): Required<PathConfig> {
+  const dir = moduleDir();
   return {
-    bundledDir: path.join(__dirname, "..", "docs"),
-    globalDir: path.join(os.homedir(), ".odoo-mcp", type),
-    localDir: path.join(process.cwd(), ".odoo-mcp", type),
+    bundledDir: dir ? path.join(dir, "..", "docs") : "",
+    globalDir: safeDir(() => path.join(os.homedir(), ".odoo-mcp", type)) ?? "",
+    localDir: safeDir(() => path.join(process.cwd(), ".odoo-mcp", type)) ?? "",
   };
+}
+
+/**
+ * Docs and SOPs form a flat namespace, and `name` arrives straight from tool
+ * input — which the model controls. Anything that could address a file outside
+ * the target directory is rejected outright rather than sanitised, so there is
+ * no rewriting step to outsmart.
+ */
+function isValidEntryName(name: string): boolean {
+  if (!name || name === "." || name === "..") return false;
+  // No separators, no traversal, no absolute paths, no NUL truncation.
+  if (/[/\\]/.test(name)) return false;
+  if (name.includes("\0")) return false;
+  // A Windows drive-relative name ("D:notes") carries no separator but
+  // resolves against that drive's working directory, landing outside the
+  // target directory. Rejected on every platform so the rule is testable
+  // wherever the suite runs, not just on Windows.
+  if (/^[a-zA-Z]:/.test(name)) return false;
+  return true;
+}
+
+/**
+ * Resolve `name` to a file path inside `dir`, or null if it would escape.
+ */
+function resolveEntryPath(dir: string, name: string): string | null {
+  if (!isValidEntryName(name)) return null;
+
+  const baseDir = path.resolve(dir);
+  const filePath = path.resolve(baseDir, `${name}.md`);
+
+  // Defence in depth: whatever the name looked like, the resolved path must be
+  // a direct child of the target directory. On POSIX this is unreachable once
+  // isValidEntryName has run — which is why a POSIX-only test suite cannot
+  // exercise it — but it remains the backstop for platform-specific resolution
+  // quirks such as Windows drive-relative paths.
+  if (path.dirname(filePath) !== baseDir) return null;
+
+  return filePath;
+}
+
+/** Error returned when a name is rejected. */
+function invalidNameError(type: "docs" | "sops", name: string): string {
+  const kind = type === "docs" ? "doc" : "SOP";
+  return `Invalid ${kind} name "${name}": must be a plain file name without path separators or "..".`;
 }
 
 /**
@@ -57,7 +128,8 @@ function getDocPaths(
   // Local (./.odoo-mcp/docs or ./.odoo-mcp/sops)
   paths.push({ source: "local", dir: cfg.localDir });
 
-  return paths;
+  // Drop layers this runtime cannot resolve (see getDefaultPaths).
+  return paths.filter((entry) => entry.dir !== "");
 }
 
 /**
@@ -103,12 +175,14 @@ export function readEntry(
   name: string,
   config?: PathConfig,
 ): DocContent | null {
+  if (!isValidEntryName(name)) return null;
+
   const paths = getDocPaths(type, config);
 
   // Search in reverse order (local first, then global, then bundled)
   for (const { source, dir } of [...paths].reverse()) {
-    const filePath = path.join(dir, `${name}.md`);
-    if (fs.existsSync(filePath)) {
+    const filePath = resolveEntryPath(dir, name);
+    if (filePath && fs.existsSync(filePath)) {
       try {
         const content = fs.readFileSync(filePath, "utf-8");
         return { name, source, content };
@@ -133,11 +207,15 @@ export function saveEntry(
   const defaults = getDefaultPaths(type);
   const localDir = config?.localDir ?? defaults.localDir;
 
+  const filePath = resolveEntryPath(localDir, name);
+  if (!filePath) {
+    return { success: false, error: invalidNameError(type, name) };
+  }
+
   try {
     // Ensure directory exists
     fs.mkdirSync(localDir, { recursive: true });
 
-    const filePath = path.join(localDir, `${name}.md`);
     fs.writeFileSync(filePath, content, "utf-8");
 
     return { success: true, path: filePath };
@@ -156,7 +234,11 @@ export function deleteEntry(
 ): { success: boolean; error?: string } {
   const defaults = getDefaultPaths(type);
   const localDir = config?.localDir ?? defaults.localDir;
-  const filePath = path.join(localDir, `${name}.md`);
+
+  const filePath = resolveEntryPath(localDir, name);
+  if (!filePath) {
+    return { success: false, error: invalidNameError(type, name) };
+  }
 
   if (!fs.existsSync(filePath)) {
     return {

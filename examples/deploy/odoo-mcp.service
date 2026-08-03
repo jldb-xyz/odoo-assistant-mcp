@@ -1,0 +1,65 @@
+# systemd unit for the Odoo MCP server on a plain host.
+#
+#   sudo cp examples/deploy/odoo-mcp.service /etc/systemd/system/
+#   sudo install -m 0600 -o root -g root /dev/null /etc/odoo-mcp.env
+#   sudo editor /etc/odoo-mcp.env          # see docs/DEPLOYMENT.md
+#   sudo useradd --system --no-create-home --shell /usr/sbin/nologin odoo-mcp
+#   sudo systemctl daemon-reload && sudo systemctl enable --now odoo-mcp
+#
+# The env file holds an Odoo API key. 0600 root:root matters — EnvironmentFile
+# is read by systemd as root before dropping privileges, so the service user
+# does not need to read it.
+
+[Unit]
+Description=Odoo MCP Server
+Documentation=https://github.com/jldb-xyz/odoo-assistant-mcp
+After=network-online.target
+Wants=network-online.target
+# Give up rather than loop forever on a bad credential. These are [Unit]
+# directives — systemd ignores them under [Service].
+StartLimitBurst=5
+StartLimitIntervalSec=120
+
+[Service]
+Type=simple
+User=odoo-mcp
+Group=odoo-mcp
+
+EnvironmentFile=/etc/odoo-mcp.env
+# Confirm the interpreter path with `command -v node`; nvm and distro packages
+# put it elsewhere, and systemd needs an absolute path.
+ExecStart=/usr/bin/node /opt/odoo-mcp/dist/index.js --http
+WorkingDirectory=/opt/odoo-mcp
+
+Restart=on-failure
+RestartSec=5s
+
+# Logs go to the journal: the server writes diagnostics to stderr.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=odoo-mcp
+
+# --- Hardening -------------------------------------------------------------
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+# ProtectSystem=strict makes everything read-only; grant just what is written.
+# Drop this if you do not use save_doc / save_sop.
+ReadWritePaths=/var/lib/odoo-mcp
+
+[Install]
+WantedBy=multi-user.target

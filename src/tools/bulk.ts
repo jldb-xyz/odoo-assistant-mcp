@@ -5,17 +5,9 @@
 import { z } from "zod";
 import type { IOdooClient, OdooFieldDef } from "../types/index.js";
 import { defineTool } from "./registry.js";
+import { isError } from "./result-utils.js";
 
 // ============ Utility Functions ============
-
-function isError(result: unknown): result is { error: string } {
-  return (
-    typeof result === "object" &&
-    result !== null &&
-    "error" in result &&
-    typeof (result as { error: string }).error === "string"
-  );
-}
 
 /**
  * Get required fields for a model that don't have defaults
@@ -148,7 +140,7 @@ export const BulkOperationInputSchema = z.object({
     .enum(VALID_OPERATIONS)
     .describe('Operation type: "create", "write", or "unlink"'),
   values: z
-    .array(z.record(z.unknown()))
+    .array(z.record(z.string(), z.unknown()))
     .optional()
     .describe("For create: array of value dictionaries to create"),
   record_ids: z
@@ -156,7 +148,7 @@ export const BulkOperationInputSchema = z.object({
     .optional()
     .describe("For write/unlink: record IDs to modify or delete"),
   update_values: z
-    .record(z.unknown())
+    .record(z.string(), z.unknown())
     .optional()
     .describe("For write: values to update on all specified records"),
   batch_size: z
@@ -443,36 +435,18 @@ export async function bulkOperation(
 
 export const bulkOperationTool = defineTool({
   name: "bulk_operation",
+  title: "Bulk Create / Update / Delete",
+  annotations: {
+    readOnlyHint: false,
+    destructiveHint: true,
+    idempotentHint: false,
+    openWorldHint: true,
+  },
   description:
     "Perform bulk create, update, or delete operations on Odoo records. " +
     "Each batch is atomic (all-or-nothing) - if any record in a batch fails, " +
     "the entire batch is rolled back. Includes validation and dry-run mode. " +
     "Use validate_only=true to check for errors before executing.",
-  inputSchema: {
-    model: z.string().describe('Model technical name (e.g., "res.partner")'),
-    operation: z
-      .enum(VALID_OPERATIONS)
-      .describe('Operation type: "create", "write", or "unlink"'),
-    values: z
-      .array(z.record(z.unknown()))
-      .optional()
-      .describe("For create: array of value dictionaries to create"),
-    record_ids: z
-      .array(z.number())
-      .optional()
-      .describe("For write/unlink: record IDs to modify or delete"),
-    update_values: z
-      .record(z.unknown())
-      .optional()
-      .describe("For write: values to update on all specified records"),
-    batch_size: z
-      .number()
-      .optional()
-      .describe("Records per batch (default: 100). Each batch is atomic."),
-    validate_only: z
-      .boolean()
-      .optional()
-      .describe("If true, only validate without executing (dry run)"),
-  },
+  inputSchema: BulkOperationInputSchema.shape,
   handler: async (client, input) => bulkOperation(client, input),
 });
