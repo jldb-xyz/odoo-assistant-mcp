@@ -7,6 +7,8 @@ import { defineTool } from "./registry.js";
  */
 export const listSopsTool = defineTool({
   name: "list_sops",
+  title: "List SOPs",
+  annotations: { readOnlyHint: true, openWorldHint: false },
   description:
     "List available Standard Operating Procedures. SOPs are step-by-step instructions you should FOLLOW when performing specific Odoo operations. Check for relevant SOPs before complex tasks like data migrations, integrations, or multi-step workflows.",
   inputSchema: {},
@@ -27,6 +29,8 @@ export const listSopsTool = defineTool({
  */
 export const readSopTool = defineTool({
   name: "read_sop",
+  title: "Read SOP",
+  annotations: { readOnlyHint: true, openWorldHint: false },
   description:
     "Read a specific SOP by name. SOPs contain proven procedures for Odoo operations - follow these steps when performing the described task to ensure consistency and avoid common pitfalls.",
   inputSchema: {
@@ -56,6 +60,13 @@ export const readSopTool = defineTool({
  */
 export const saveSopTool = defineTool({
   name: "save_sop",
+  title: "Save SOP",
+  annotations: {
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+  },
   description:
     "Save a Standard Operating Procedure to local project (.odoo-mcp/sops/). After successfully completing a complex multi-step operation, save the procedure as an SOP so it can be followed consistently in future similar tasks.",
   inputSchema: {

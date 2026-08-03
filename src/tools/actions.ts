@@ -5,17 +5,9 @@
 import { z } from "zod";
 import type { IOdooClient, OdooFieldDef } from "../types/index.js";
 import { defineTool } from "./registry.js";
+import { isError } from "./result-utils.js";
 
 // ============ Utility Functions ============
-
-function isError(result: unknown): result is { error: string } {
-  return (
-    typeof result === "object" &&
-    result !== null &&
-    "error" in result &&
-    typeof (result as { error: string }).error === "string"
-  );
-}
 
 /**
  * Common workflow action patterns in Odoo
@@ -305,24 +297,14 @@ export async function listAvailableActions(
 
 export const listAvailableActionsTool = defineTool({
   name: "list_available_actions",
+  title: "List Available Actions",
+  annotations: { readOnlyHint: true, openWorldHint: true },
   description:
     "Discover workflow actions and state transitions available on an Odoo model. " +
     "Returns common workflow actions (action_confirm, action_post, etc.), " +
     "server actions bound to the model, and state field information. " +
     "Use this to understand what operations can be performed on records.",
-  inputSchema: {
-    model: z.string().describe('Model technical name (e.g., "sale.order")'),
-    record_id: z
-      .number()
-      .optional()
-      .describe("Specific record ID to check available actions for"),
-    include_server_actions: z
-      .boolean()
-      .optional()
-      .describe(
-        "Include ir.actions.server bound to this model (default: true)",
-      ),
-  },
+  inputSchema: ListAvailableActionsInputSchema.shape,
   handler: async (client, input) => listAvailableActions(client, input),
 });
 
@@ -338,7 +320,7 @@ export const ExecuteActionInputSchema = z.object({
     .min(1)
     .describe("Record IDs to execute the action on"),
   context: z
-    .record(z.unknown())
+    .record(z.string(), z.unknown())
     .optional()
     .describe("Additional context to pass to the action"),
 });
@@ -485,23 +467,18 @@ export async function executeAction(
 
 export const executeActionTool = defineTool({
   name: "execute_action",
+  title: "Execute Workflow Action",
+  annotations: {
+    readOnlyHint: false,
+    destructiveHint: true,
+    idempotentHint: false,
+    openWorldHint: true,
+  },
   description:
     "Execute a workflow action on Odoo records. " +
     "Captures state before and after execution to show what changed. " +
     "Common actions: action_confirm, action_post, action_cancel, action_done. " +
     "Use list_available_actions first to discover valid actions for a model.",
-  inputSchema: {
-    model: z.string().describe('Model technical name (e.g., "sale.order")'),
-    action: z
-      .string()
-      .describe('Action method name to execute (e.g., "action_confirm")'),
-    record_ids: z
-      .array(z.number())
-      .describe("Record IDs to execute the action on"),
-    context: z
-      .record(z.unknown())
-      .optional()
-      .describe("Additional context to pass to the action"),
-  },
+  inputSchema: ExecuteActionInputSchema.shape,
   handler: async (client, input) => executeAction(client, input),
 });
