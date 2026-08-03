@@ -1,0 +1,48 @@
+# Reverse proxy that adds the authentication the MCP server does not have.
+#
+# Caddy obtains and renews a TLS certificate automatically for {$PUBLIC_HOSTNAME}.
+
+{$PUBLIC_HOSTNAME} {
+	# Health probes are unauthenticated and never leave the proxy: uptime
+	# checks should not need a credential, and they expose nothing but a
+	# version string.
+	handle /health {
+		reverse_proxy odoo-mcp:3000
+	}
+
+	handle /ready {
+		reverse_proxy odoo-mcp:3000
+	}
+
+	# Everything else — i.e. /mcp — requires a bearer token.
+	#
+	# A static token is the floor, not the goal. It is a single shared
+	# credential with no expiry, rotation or per-user attribution. For anything
+	# beyond a small trusted team, front this with an OAuth2 proxy or your
+	# identity provider instead; see docs/DEPLOYMENT.md.
+	handle {
+		@unauthorised not header Authorization "Bearer {$MCP_BEARER_TOKEN}"
+		respond @unauthorised 401 {
+			body "Unauthorized"
+			close
+		}
+
+		reverse_proxy odoo-mcp:3000 {
+			# The MCP server validates the Host header, so pass the public
+			# name through rather than rewriting it to the upstream address.
+			header_up Host {host}
+
+			# Streamable HTTP responses may be long-lived SSE streams. Without
+			# this, a tool call that takes longer than the default flush
+			# interval is truncated mid-stream.
+			flush_interval -1
+		}
+	}
+
+	encode gzip
+
+	log {
+		output stdout
+		format console
+	}
+}

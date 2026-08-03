@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "odoo-mcp",
+  "main": "worker.ts",
+
+  // nodejs_compat is required: the Odoo client speaks XML-RPC over node:http.
+  // Outbound node:http needs `enable_nodejs_http_modules`, which is implied by
+  // nodejs_compat for compatibility dates from 2025-08-15 onward.
+  "compatibility_date": "2026-07-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  "observability": {
+    "enabled": true
+  },
+
+  // Non-secret configuration. ODOO_PASSWORD is a secret:
+  //   wrangler secret put ODOO_PASSWORD
+  //   wrangler secret put MCP_BEARER_TOKEN
+  "vars": {
+    "ODOO_URL": "https://odoo.example.com",
+    "ODOO_DB": "production",
+    "ODOO_USERNAME": "mcp-service-account"
+  }
+}

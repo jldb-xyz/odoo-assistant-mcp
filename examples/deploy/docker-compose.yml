@@ -1,0 +1,74 @@
+# Deploying the MCP server itself.
+#
+# Not to be confused with the docker-compose.yml at the repo root, which spins
+# up Odoo instances for the integration tests and is not a deployment artifact.
+#
+#   docker compose -f examples/deploy/docker-compose.yml up -d
+#
+# The MCP endpoint has no authentication. This file keeps it on an internal
+# network and puts Caddy in front to terminate TLS and check a bearer token.
+# See docs/DEPLOYMENT.md before exposing it.
+
+services:
+  odoo-mcp:
+    image: ghcr.io/jldb-xyz/odoo-mcp:latest
+    # Or build from a checkout:
+    # build: ../..
+    restart: unless-stopped
+    environment:
+      ODOO_URL: ${ODOO_URL:?set ODOO_URL}
+      ODOO_DB: ${ODOO_DB:?set ODOO_DB}
+      ODOO_USERNAME: ${ODOO_USERNAME:?set ODOO_USERNAME}
+      # Prefer a secret over an env var in production; see the `secrets` block.
+      ODOO_PASSWORD: ${ODOO_PASSWORD:?set ODOO_PASSWORD}
+      ODOO_MCP_HOST: 0.0.0.0
+      ODOO_MCP_PORT: "3000"
+      # The Host header arriving from Caddy is the public name, so it has to be
+      # allowed or every request is rejected as a DNS-rebinding attempt.
+      ODOO_MCP_ALLOWED_HOSTS: ${PUBLIC_HOSTNAME:-mcp.example.com}
+    networks: [internal]
+    # No `ports:` — nothing is published directly. Only Caddy can reach it.
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      odoo-mcp:
+        condition: service_healthy
+    ports:
+      - "443:443"
+      - "80:80"
+    environment:
+      PUBLIC_HOSTNAME: ${PUBLIC_HOSTNAME:-mcp.example.com}
+      # `caddy hash-password` output, not the plaintext token.
+      MCP_BEARER_TOKEN: ${MCP_BEARER_TOKEN:?set MCP_BEARER_TOKEN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [internal, public]
+
+networks:
+  internal:
+    internal: true
+  public: {}
+
+volumes:
+  caddy_data:
+  caddy_config:
