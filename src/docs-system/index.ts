@@ -3,8 +3,30 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+/**
+ * Directory this module was loaded from, used to locate the bundled docs.
+ *
+ * Resolved lazily and defensively: on runtimes without a module-relative
+ * filesystem (Cloudflare Workers) `import.meta.url` is not a file URL and this
+ * throws. At module scope that took down the entire server on import, even for
+ * callers that never touch a doc.
+ */
+function moduleDir(): string | null {
+  try {
+    return path.dirname(fileURLToPath(import.meta.url));
+  } catch {
+    return null;
+  }
+}
+
+/** A directory that may not be resolvable on every runtime. */
+function safeDir(resolve: () => string): string | null {
+  try {
+    return resolve();
+  } catch {
+    return null;
+  }
+}
 
 export interface DocEntry {
   name: string;
@@ -25,13 +47,18 @@ export interface PathConfig {
 }
 
 /**
- * Get default paths for docs/SOPs
+ * Get default paths for docs/SOPs.
+ *
+ * A directory that cannot be resolved on this runtime becomes an empty string,
+ * which `getDocPaths` filters out — that layer is simply unavailable rather
+ * than fatal.
  */
 function getDefaultPaths(type: "docs" | "sops"): Required<PathConfig> {
+  const dir = moduleDir();
   return {
-    bundledDir: path.join(__dirname, "..", "docs"),
-    globalDir: path.join(os.homedir(), ".odoo-mcp", type),
-    localDir: path.join(process.cwd(), ".odoo-mcp", type),
+    bundledDir: dir ? path.join(dir, "..", "docs") : "",
+    globalDir: safeDir(() => path.join(os.homedir(), ".odoo-mcp", type)) ?? "",
+    localDir: safeDir(() => path.join(process.cwd(), ".odoo-mcp", type)) ?? "",
   };
 }
 
@@ -101,7 +128,8 @@ function getDocPaths(
   // Local (./.odoo-mcp/docs or ./.odoo-mcp/sops)
   paths.push({ source: "local", dir: cfg.localDir });
 
-  return paths;
+  // Drop layers this runtime cannot resolve (see getDefaultPaths).
+  return paths.filter((entry) => entry.dir !== "");
 }
 
 /**

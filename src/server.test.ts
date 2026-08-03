@@ -4,6 +4,7 @@ import {
   _resetClient,
   _setClient,
   createServer,
+  FALLBACK_SERVER_VERSION,
   formatToolResult,
   getClient,
   initializeClient,
@@ -276,6 +277,17 @@ describe("server", () => {
       })) as { default: { version: string } };
 
       expect(SERVER_VERSION).toBe(pkg.default.version);
+    });
+
+    it("keeps the no-filesystem fallback in step with package.json", async () => {
+      // Runtimes without a module-relative filesystem (Cloudflare Workers) use
+      // FALLBACK_SERVER_VERSION. Nothing else would catch it going stale, and
+      // it is reported to clients as serverInfo.
+      const pkg = (await import("../package.json", {
+        with: { type: "json" },
+      })) as { default: { version: string } };
+
+      expect(FALLBACK_SERVER_VERSION).toBe(pkg.default.version);
     });
   });
 

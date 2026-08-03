@@ -24,12 +24,31 @@ import {
 import type { IOdooClient } from "./types/index.js";
 
 /**
+ * Fallback for runtimes with no module-relative filesystem, such as Cloudflare
+ * Workers, where `import.meta.url` is not a file URL and `createRequire`
+ * throws. Kept in step with package.json by a test — a wrong version here is
+ * reported to every client as `serverInfo`.
+ */
+export const FALLBACK_SERVER_VERSION = "1.2.0";
+
+/**
  * Version advertised to MCP clients. Read from package.json so it cannot drift
  * from the published version. Resolves identically from `src/` and `dist/`.
+ *
+ * Reading it must never be fatal: this runs at module scope, so throwing here
+ * takes the whole server down rather than degrading one field.
  */
-export const SERVER_VERSION: string = (
-  createRequire(import.meta.url)("../package.json") as { version: string }
-).version;
+function resolveServerVersion(): string {
+  try {
+    return (
+      createRequire(import.meta.url)("../package.json") as { version: string }
+    ).version;
+  } catch {
+    return FALLBACK_SERVER_VERSION;
+  }
+}
+
+export const SERVER_VERSION: string = resolveServerVersion();
 
 /** Name advertised to MCP clients. */
 export const SERVER_NAME = "odoo-mcp";
