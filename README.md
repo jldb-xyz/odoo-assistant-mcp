@@ -99,7 +99,7 @@ config needs to change.
 
 - Odoo 14+ with XML-RPC enabled (default)
 - API key (Custom plans only—not available on One App Free or Standard)
-- Node.js 20+
+- Node.js 22.13+
 
 ### Tested Versions
 

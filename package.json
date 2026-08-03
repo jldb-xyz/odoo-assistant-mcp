@@ -92,6 +92,6 @@
     "vitest-llm-reporter": "^1.2.2"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.13.0"
   }
 }
