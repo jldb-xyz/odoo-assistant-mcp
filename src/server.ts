@@ -24,12 +24,17 @@ import {
 import type { IOdooClient } from "./types/index.js";
 
 /**
- * Fallback for runtimes with no module-relative filesystem, such as Cloudflare
- * Workers, where `import.meta.url` is not a file URL and `createRequire`
- * throws. Kept in step with package.json by a test — a wrong version here is
- * reported to every client as `serverInfo`.
+ * Reported when the real version cannot be read: runtimes with no
+ * module-relative filesystem, such as Cloudflare Workers, where
+ * `import.meta.url` is not a file URL and `createRequire` throws.
+ *
+ * Deliberately a sentinel rather than a copy of the current version. A literal
+ * here would have to be updated by hand every release, and `changeset version`
+ * bumps package.json automatically — so it would go stale silently and report a
+ * wrong version to every client. Pass `version` to `createServer` if a
+ * filesystem-less deployment needs to advertise a real one.
  */
-export const FALLBACK_SERVER_VERSION = "1.2.0";
+export const FALLBACK_SERVER_VERSION = "0.0.0+unknown";
 
 /**
  * Version advertised to MCP clients. Read from package.json so it cannot drift
@@ -113,6 +118,14 @@ export interface ServerDependencies {
    * Defaults to the standard Odoo tool registry if not provided.
    */
   toolRegistry?: ToolRegistry;
+  /**
+   * Version advertised to clients as `serverInfo`.
+   *
+   * Defaults to the version read from package.json. Supply it where that read
+   * is impossible — a Cloudflare Worker has no module-relative filesystem, so
+   * without this it reports {@link FALLBACK_SERVER_VERSION}.
+   */
+  version?: string;
 }
 
 /**
@@ -141,7 +154,11 @@ export function formatToolResult(result: ToolResult): string {
  */
 export function createServer(deps?: ServerDependencies): McpServer {
   const server = new McpServer(
-    { name: SERVER_NAME, title: "Odoo MCP Server", version: SERVER_VERSION },
+    {
+      name: SERVER_NAME,
+      title: "Odoo MCP Server",
+      version: deps?.version ?? SERVER_VERSION,
+    },
     { capabilities: { tools: {}, resources: {} } },
   );
 

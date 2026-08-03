@@ -272,7 +272,7 @@ turning them into Odoo traffic is a self-inflicted load problem. A broken Odoo
 surfaces as failing tool calls, which is where it belongs.
 
 ```bash
-curl -s http://127.0.0.1:3000/health   # {"status":"ok","version":"1.2.0"}
+curl -s http://127.0.0.1:3000/health   # {"status":"ok","version":"2.0.0"}
 curl -s http://127.0.0.1:3000/ready    # {"status":"ready"}
 ```
 

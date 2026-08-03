@@ -279,15 +279,18 @@ describe("server", () => {
       expect(SERVER_VERSION).toBe(pkg.default.version);
     });
 
-    it("keeps the no-filesystem fallback in step with package.json", async () => {
-      // Runtimes without a module-relative filesystem (Cloudflare Workers) use
-      // FALLBACK_SERVER_VERSION. Nothing else would catch it going stale, and
-      // it is reported to clients as serverInfo.
+    it("uses a sentinel fallback that cannot go stale", async () => {
+      // An earlier version of this pinned FALLBACK_SERVER_VERSION to the
+      // current version and asserted the two matched. `changeset version` bumps
+      // package.json automatically, so the release PR broke this test — and
+      // left unfixed it would have shipped a stale version to every
+      // filesystem-less client. The fallback must stay a sentinel.
       const pkg = (await import("../package.json", {
         with: { type: "json" },
       })) as { default: { version: string } };
 
-      expect(FALLBACK_SERVER_VERSION).toBe(pkg.default.version);
+      expect(FALLBACK_SERVER_VERSION).not.toBe(pkg.default.version);
+      expect(FALLBACK_SERVER_VERSION).toMatch(/unknown/);
     });
   });
 
