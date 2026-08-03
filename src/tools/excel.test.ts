@@ -1,9 +1,26 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import ExcelJS from "exceljs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import XLSX from "xlsx";
 import { convertExcelTool, listExcelSheetsTool } from "./excel.js";
+
+/**
+ * Write an .xlsx fixture: one entry per sheet, each a name and rows of cells.
+ */
+async function writeWorkbook(
+  filePath: string,
+  sheets: Array<{ name: string; rows: unknown[][] }>,
+): Promise<void> {
+  const workbook = new ExcelJS.Workbook();
+  for (const { name, rows } of sheets) {
+    const sheet = workbook.addWorksheet(name);
+    for (const row of rows) {
+      sheet.addRow(row);
+    }
+  }
+  await workbook.xlsx.writeFile(filePath);
+}
 
 describe("excel tools", () => {
   // Use null as client since these tools don't use it
@@ -18,73 +35,61 @@ describe("excel tools", () => {
   let specialCharsPath: string;
   let corruptedPath: string;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     // Create temp directory for test files
     testDir = fs.mkdtempSync(path.join(os.tmpdir(), "excel-test-"));
 
-    // Create simple.xlsx - single sheet with basic data
-    const simpleWb = XLSX.utils.book_new();
-    const simpleData = [
-      ["Name", "Value"],
-      ["Alice", 100],
-      ["Bob", 200],
-    ];
-    XLSX.utils.book_append_sheet(
-      simpleWb,
-      XLSX.utils.aoa_to_sheet(simpleData),
-      "Sheet1",
-    );
+    // simple.xlsx - single sheet with basic data
     simplePath = path.join(testDir, "simple.xlsx");
-    XLSX.writeFile(simpleWb, simplePath);
+    await writeWorkbook(simplePath, [
+      {
+        name: "Sheet1",
+        rows: [
+          ["Name", "Value"],
+          ["Alice", 100],
+          ["Bob", 200],
+        ],
+      },
+    ]);
 
-    // Create multi-sheet.xlsx - multiple sheets
-    const multiWb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(
-      multiWb,
-      XLSX.utils.aoa_to_sheet([
-        ["Col1", "Col2"],
-        ["A1", "B1"],
-      ]),
-      "Sheet1",
-    );
-    XLSX.utils.book_append_sheet(
-      multiWb,
-      XLSX.utils.aoa_to_sheet([
-        ["Data1", "Data2"],
-        ["X", "Y"],
-      ]),
-      "Data",
-    );
-    XLSX.utils.book_append_sheet(
-      multiWb,
-      XLSX.utils.aoa_to_sheet([["Summary"]]),
-      "Summary",
-    );
+    // multi-sheet.xlsx - multiple sheets
     multiSheetPath = path.join(testDir, "multi-sheet.xlsx");
-    XLSX.writeFile(multiWb, multiSheetPath);
+    await writeWorkbook(multiSheetPath, [
+      {
+        name: "Sheet1",
+        rows: [
+          ["Col1", "Col2"],
+          ["A1", "B1"],
+        ],
+      },
+      {
+        name: "Data",
+        rows: [
+          ["Data1", "Data2"],
+          ["X", "Y"],
+        ],
+      },
+      { name: "Summary", rows: [["Summary"]] },
+    ]);
 
-    // Create empty.xlsx - workbook with empty sheet
-    const emptyWb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(emptyWb, XLSX.utils.aoa_to_sheet([]), "Empty");
+    // empty.xlsx - workbook with empty sheet
     emptyPath = path.join(testDir, "empty.xlsx");
-    XLSX.writeFile(emptyWb, emptyPath);
+    await writeWorkbook(emptyPath, [{ name: "Empty", rows: [] }]);
 
-    // Create special-chars.xlsx - data with CSV edge cases
-    const specialWb = XLSX.utils.book_new();
-    const specialData = [
-      ["Field", "Value"],
-      ["With,Comma", "test1"],
-      ['With"Quote', "test2"],
-      ["With\nNewline", "test3"],
-      ["Normal", "test4"],
-    ];
-    XLSX.utils.book_append_sheet(
-      specialWb,
-      XLSX.utils.aoa_to_sheet(specialData),
-      "Sheet1",
-    );
+    // special-chars.xlsx - data with CSV edge cases
     specialCharsPath = path.join(testDir, "special-chars.xlsx");
-    XLSX.writeFile(specialWb, specialCharsPath);
+    await writeWorkbook(specialCharsPath, [
+      {
+        name: "Sheet1",
+        rows: [
+          ["Field", "Value"],
+          ["With,Comma", "test1"],
+          ['With"Quote', "test2"],
+          ["With\nNewline", "test3"],
+          ["Normal", "test4"],
+        ],
+      },
+    ]);
 
     // Create corrupted file - use random binary that can't be parsed
     corruptedPath = path.join(testDir, "corrupted.xlsx");
@@ -151,12 +156,13 @@ describe("excel tools", () => {
       });
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain("ENOENT");
+      expect(result.error).toMatch(/not found/i);
+      expect(result.error).toContain("/does/not/exist.xlsx");
     });
 
     it("should handle corrupted file gracefully", async () => {
-      // xlsx library is lenient and may parse corrupted files as empty workbooks
-      // Our tool should not crash regardless of what xlsx does
+      // ExcelJS may reject corrupted files or parse them as empty workbooks;
+      // our tool should not crash regardless of which it does
       const result = await listExcelSheetsTool.handler(mockClient, {
         file_path: corruptedPath,
       });
@@ -311,12 +317,13 @@ describe("excel tools", () => {
         });
 
         expect(result.success).toBe(false);
-        expect(result.error).toContain("ENOENT");
+        expect(result.error).toMatch(/not found/i);
+        expect(result.error).toContain("/does/not/exist.xlsx");
       });
 
       it("should handle corrupted file gracefully", async () => {
-        // xlsx library is lenient and may parse corrupted files as empty workbooks
-        // Our tool should not crash regardless of what xlsx does
+        // ExcelJS may reject corrupted files or parse them as empty workbooks;
+        // our tool should not crash regardless of which it does
         const result = await convertExcelTool.handler(mockClient, {
           file_path: corruptedPath,
         });
