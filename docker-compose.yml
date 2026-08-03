@@ -29,6 +29,9 @@ services:
   # Odoo 14 - port 8014
   odoo14:
     image: odoo:14
+    # Odoo only began publishing arm64 images at 16, so this one runs
+    # under emulation on Apple Silicon. No-op on x86 CI runners.
+    platform: linux/amd64
     profiles: ["odoo14"]
     depends_on:
       postgres:
@@ -50,7 +53,21 @@ services:
       --db_user=odoo
       --db_password=odoo
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8069/web/health"]
+      # Odoo 14 predates /web/health (added in 15) and answers 404 there, so it
+      # could never become healthy. Probe XML-RPC, which every version serves.
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "-X",
+          "POST",
+          "-H",
+          "Content-Type: text/xml",
+          "-d",
+          "<?xml version=\"1.0\"?><methodCall><methodName>version</methodName></methodCall>",
+          "http://localhost:8069/xmlrpc/2/common",
+        ]
       interval: 10s
       timeout: 5s
       retries: 30
@@ -59,6 +76,9 @@ services:
   # Odoo 15 - port 8015
   odoo15:
     image: odoo:15
+    # Odoo only began publishing arm64 images at 16, so this one runs
+    # under emulation on Apple Silicon. No-op on x86 CI runners.
+    platform: linux/amd64
     profiles: ["odoo15"]
     depends_on:
       postgres:

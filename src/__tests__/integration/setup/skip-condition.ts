@@ -122,25 +122,31 @@ export async function isOdooRunning(
   host: string = TEST_CONFIG.host,
   port: number = TEST_CONFIG.port,
 ): Promise<boolean> {
+  // `/web/health` only exists on newer Odoo versions. A non-OK response there
+  // (a 404 on Odoo 14, say) says nothing about whether the instance is up, so
+  // it must fall through to the XML-RPC endpoint every supported version
+  // serves — returning early on `response.ok` reported Odoo 14 as permanently
+  // down.
   try {
     const response = await fetch(`http://${host}:${port}/web/health`, {
       method: "GET",
       signal: AbortSignal.timeout(5000),
     });
+    if (response.ok) return true;
+  } catch {
+    // Unreachable or no such endpoint — fall through to XML-RPC.
+  }
+
+  try {
+    const response = await fetch(`http://${host}:${port}/xmlrpc/2/common`, {
+      method: "POST",
+      headers: { "Content-Type": "text/xml" },
+      body: '<?xml version="1.0"?><methodCall><methodName>version</methodName></methodCall>',
+      signal: AbortSignal.timeout(5000),
+    });
     return response.ok;
   } catch {
-    // Try XML-RPC endpoint as fallback
-    try {
-      const response = await fetch(`http://${host}:${port}/xmlrpc/2/common`, {
-        method: "POST",
-        headers: { "Content-Type": "text/xml" },
-        body: '<?xml version="1.0"?><methodCall><methodName>version</methodName></methodCall>',
-        signal: AbortSignal.timeout(5000),
-      });
-      return response.ok;
-    } catch {
-      return false;
-    }
+    return false;
   }
 }
 
