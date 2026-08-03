@@ -278,6 +278,32 @@ describe("http-server", () => {
      * Issue a raw HTTP request so headers like `Host` — which fetch() refuses
      * to set — can be controlled exactly.
      */
+    /** Raw GET against an arbitrary path, with full control of the headers. */
+    function rawRequestPath(
+      port: number,
+      path: string,
+      headers: string,
+    ): Promise<string> {
+      return new Promise((resolve, reject) => {
+        const socket = net.connect(port, "127.0.0.1", () => {
+          socket.write(
+            `GET ${path} HTTP/1.1\r\n${headers}\r\nConnection: close\r\n\r\n`,
+          );
+        });
+        let data = "";
+        const finish = () => {
+          socket.destroy();
+          resolve(data.split("\r\n")[0] ?? "");
+        };
+        socket.on("data", (chunk) => {
+          data += chunk;
+          if (data.includes("\r\n")) finish();
+        });
+        socket.on("error", reject);
+        socket.on("close", finish);
+      });
+    }
+
     function rawRequest(port: number, headers: string): Promise<string> {
       return new Promise((resolve, reject) => {
         const body = '{"jsonrpc":"2.0","id":1,"method":"tools/list"}';
@@ -346,6 +372,92 @@ describe("http-server", () => {
       const { port } = await start();
       const response = await fetch(`http://127.0.0.1:${port}/not-mcp`);
       expect(response.status).toBe(404);
+    });
+
+    describe("health probes", () => {
+      // Container orchestrators need a probe target. Without these the only
+      // reachable path is /mcp, which answers 405 to GET.
+      it("answers /health with 200 for liveness", async () => {
+        const { port } = await start();
+        const response = await fetch(`http://127.0.0.1:${port}/health`);
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get("content-type")).toContain(
+          "application/json",
+        );
+        await expect(response.json()).resolves.toMatchObject({ status: "ok" });
+      });
+
+      it("answers /ready with 200 once the Odoo client is initialised", async () => {
+        const { port } = await start();
+        const response = await fetch(`http://127.0.0.1:${port}/ready`);
+
+        expect(response.status).toBe(200);
+        await expect(response.json()).resolves.toMatchObject({
+          status: "ready",
+        });
+      });
+
+      it("answers /ready with 503 when no Odoo client is initialised", async () => {
+        const { port } = await start();
+        // Simulate losing the connection this instance started with.
+        _resetClient();
+
+        const response = await fetch(`http://127.0.0.1:${port}/ready`);
+        expect(response.status).toBe(503);
+        await expect(response.json()).resolves.toMatchObject({
+          status: "not-ready",
+        });
+      });
+
+      it("reports the server version on /health", async () => {
+        const pkg = (await import("../package.json", {
+          with: { type: "json" },
+        })) as { default: { version: string } };
+        const { port } = await start();
+
+        const body = (await (
+          await fetch(`http://127.0.0.1:${port}/health`)
+        ).json()) as { version: string };
+        expect(body.version).toBe(pkg.default.version);
+      });
+
+      it("does not require a Host header allowlist bypass", async () => {
+        // Probes come from the kubelet/Docker with an arbitrary Host, so the
+        // DNS-rebinding guard must not reject them before they are answered.
+        const { port } = await start();
+        const status = await rawRequestPath(
+          port,
+          "/health",
+          "Host: 10.1.2.3:8080",
+        );
+        expect(status).toContain("200");
+      });
+    });
+
+    it("accepts a Host named in allowedHosts", async () => {
+      // Behind an ingress or Service the Host is the public name, not
+      // localhost, so a deployment needs a way to allow it. Without this the
+      // server is unreachable anywhere except a loopback bind.
+      const odooClient = new MockClientBuilder().build();
+      const server = await runHttpServer(
+        { port: 0, host: "127.0.0.1", allowedHosts: ["odoo-mcp.internal"] },
+        {
+          initClient: async () => odooClient as unknown as OdooClient,
+          handleSignals: false,
+        },
+      );
+      running.push(server);
+      const address = server.address();
+      if (address === null || typeof address === "string") {
+        throw new Error("expected a TCP address");
+      }
+
+      const allowed = await rawRequest(address.port, "Host: odoo-mcp.internal");
+      expect(allowed).not.toContain("403");
+
+      const denied = await rawRequest(address.port, "Host: evil.example.com");
+      expect(denied).toContain("403");
     });
 
     it("rejects rather than hangs when the port is already bound", async () => {

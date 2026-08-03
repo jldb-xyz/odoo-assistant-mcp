@@ -8,7 +8,11 @@ async function main(): Promise<number> {
     const options = parseArgs();
 
     if (options.transport === "http") {
-      await runHttpServer({ port: options.port, host: options.host });
+      await runHttpServer({
+        port: options.port,
+        host: options.host,
+        allowedHosts: options.allowedHosts,
+      });
     } else {
       await runServer();
     }

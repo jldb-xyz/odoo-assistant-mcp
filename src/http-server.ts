@@ -14,13 +14,24 @@ import type { OdooClient } from "./connection/odoo-client.js";
 import {
   _setClient,
   createServer,
+  getClient,
   initializeClient,
   logEnvironment,
+  SERVER_VERSION,
 } from "./server.js";
 
 export interface HttpServerOptions {
   port: number;
   host: string;
+  /**
+   * Extra hostnames accepted in the Host and Origin headers, on top of
+   * loopback and the bind address.
+   *
+   * Behind an ingress, Service or reverse proxy the Host is the public name,
+   * so without this the server answers 403 to everything. Set via
+   * `ODOO_MCP_ALLOWED_HOSTS` (comma-separated).
+   */
+  allowedHosts?: string[];
 }
 
 export interface HttpServerDependencies {
@@ -37,13 +48,34 @@ export interface HttpServerDependencies {
 /** Endpoint the MCP handler is mounted on. */
 const MCP_PATH = "/mcp";
 
+/** Liveness: the process is up and serving. */
+const HEALTH_PATH = "/health";
+
+/** Readiness: this instance holds an authenticated Odoo session. */
+const READY_PATH = "/ready";
+
 /**
  * Hostnames accepted in the Host and Origin headers. Anything else is a
  * DNS-rebinding or cross-origin attempt against a locally bound server.
  */
-function allowedHostnames(host: string): string[] {
+function allowedHostnames(host: string, extra: string[] = []): string[] {
   const localhost = ["localhost", "127.0.0.1", "[::1]"];
-  return localhost.includes(host) ? localhost : [...localhost, host];
+  const names = new Set([...localhost, host, ...extra]);
+  return [...names];
+}
+
+function json(
+  res: import("node:http").ServerResponse,
+  status: number,
+  body: unknown,
+): void {
+  const payload = JSON.stringify(body);
+  res.writeHead(status, {
+    "content-type": "application/json",
+    "content-length": Buffer.byteLength(payload),
+    "cache-control": "no-store",
+  });
+  res.end(payload);
 }
 
 /**
@@ -86,18 +118,46 @@ export async function runHttpServer(
   });
 
   // DNS-rebinding and cross-origin protection for a locally bound server
-  const hostnames = allowedHostnames(options.host);
+  const hostnames = allowedHostnames(options.host, options.allowedHosts);
   const validateHost = hostHeaderValidation(hostnames);
   const validateOrigin = originValidation(hostnames);
 
   const server = createNodeHttpServer((req, res) => {
-    if (!validateHost(req, res)) return;
-    if (!validateOrigin(req, res)) return;
-
     const pathname = new URL(
       req.url ?? "/",
       `http://${req.headers.host ?? "localhost"}`,
     ).pathname;
+
+    // Probes are answered before the Host allowlist: a kubelet or Docker
+    // healthcheck addresses the container by IP, which is never in the
+    // allowlist. They carry no data and touch no Odoo state.
+    if (pathname === HEALTH_PATH) {
+      json(res, 200, { status: "ok", version: SERVER_VERSION });
+      return;
+    }
+    if (pathname === READY_PATH) {
+      // Readiness means this instance completed startup and holds an
+      // authenticated session. It deliberately does not call Odoo: probes run
+      // every few seconds per replica, and turning them into Odoo traffic
+      // would be a self-inflicted load problem. A broken Odoo surfaces as
+      // failing tool calls, not as a failing probe.
+      let ready = true;
+      try {
+        getClient();
+      } catch {
+        ready = false;
+      }
+      json(
+        res,
+        ready ? 200 : 503,
+        ready ? { status: "ready" } : { status: "not-ready" },
+      );
+      return;
+    }
+
+    if (!validateHost(req, res)) return;
+    if (!validateOrigin(req, res)) return;
+
     if (pathname !== MCP_PATH) {
       res.writeHead(404, { "content-type": "text/plain" });
       res.end("Not Found");
