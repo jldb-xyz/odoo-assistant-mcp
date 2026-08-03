@@ -36,6 +36,50 @@ function getDefaultPaths(type: "docs" | "sops"): Required<PathConfig> {
 }
 
 /**
+ * Docs and SOPs form a flat namespace, and `name` arrives straight from tool
+ * input — which the model controls. Anything that could address a file outside
+ * the target directory is rejected outright rather than sanitised, so there is
+ * no rewriting step to outsmart.
+ */
+function isValidEntryName(name: string): boolean {
+  if (!name || name === "." || name === "..") return false;
+  // No separators, no traversal, no absolute paths, no NUL truncation.
+  if (/[/\\]/.test(name)) return false;
+  if (name.includes("\0")) return false;
+  // A Windows drive-relative name ("D:notes") carries no separator but
+  // resolves against that drive's working directory, landing outside the
+  // target directory. Rejected on every platform so the rule is testable
+  // wherever the suite runs, not just on Windows.
+  if (/^[a-zA-Z]:/.test(name)) return false;
+  return true;
+}
+
+/**
+ * Resolve `name` to a file path inside `dir`, or null if it would escape.
+ */
+function resolveEntryPath(dir: string, name: string): string | null {
+  if (!isValidEntryName(name)) return null;
+
+  const baseDir = path.resolve(dir);
+  const filePath = path.resolve(baseDir, `${name}.md`);
+
+  // Defence in depth: whatever the name looked like, the resolved path must be
+  // a direct child of the target directory. On POSIX this is unreachable once
+  // isValidEntryName has run — which is why a POSIX-only test suite cannot
+  // exercise it — but it remains the backstop for platform-specific resolution
+  // quirks such as Windows drive-relative paths.
+  if (path.dirname(filePath) !== baseDir) return null;
+
+  return filePath;
+}
+
+/** Error returned when a name is rejected. */
+function invalidNameError(type: "docs" | "sops", name: string): string {
+  const kind = type === "docs" ? "doc" : "SOP";
+  return `Invalid ${kind} name "${name}": must be a plain file name without path separators or "..".`;
+}
+
+/**
  * Get all doc/SOP directories in priority order (lowest to highest)
  */
 function getDocPaths(
@@ -103,12 +147,14 @@ export function readEntry(
   name: string,
   config?: PathConfig,
 ): DocContent | null {
+  if (!isValidEntryName(name)) return null;
+
   const paths = getDocPaths(type, config);
 
   // Search in reverse order (local first, then global, then bundled)
   for (const { source, dir } of [...paths].reverse()) {
-    const filePath = path.join(dir, `${name}.md`);
-    if (fs.existsSync(filePath)) {
+    const filePath = resolveEntryPath(dir, name);
+    if (filePath && fs.existsSync(filePath)) {
       try {
         const content = fs.readFileSync(filePath, "utf-8");
         return { name, source, content };
@@ -133,11 +179,15 @@ export function saveEntry(
   const defaults = getDefaultPaths(type);
   const localDir = config?.localDir ?? defaults.localDir;
 
+  const filePath = resolveEntryPath(localDir, name);
+  if (!filePath) {
+    return { success: false, error: invalidNameError(type, name) };
+  }
+
   try {
     // Ensure directory exists
     fs.mkdirSync(localDir, { recursive: true });
 
-    const filePath = path.join(localDir, `${name}.md`);
     fs.writeFileSync(filePath, content, "utf-8");
 
     return { success: true, path: filePath };
@@ -156,7 +206,11 @@ export function deleteEntry(
 ): { success: boolean; error?: string } {
   const defaults = getDefaultPaths(type);
   const localDir = config?.localDir ?? defaults.localDir;
-  const filePath = path.join(localDir, `${name}.md`);
+
+  const filePath = resolveEntryPath(localDir, name);
+  if (!filePath) {
+    return { success: false, error: invalidNameError(type, name) };
+  }
 
   if (!fs.existsSync(filePath)) {
     return {
