@@ -107,8 +107,15 @@ export const mutations = [
     id: "server/wrong-version",
     file: "src/server.ts",
     description: "advertise a version that is not the package version",
-    find: "version: SERVER_VERSION",
-    replace: 'version: "0.0.0-wrong"',
+    find: "version: deps?.version ?? SERVER_VERSION,",
+    replace: 'version: "0.0.0-wrong",',
+  },
+  {
+    id: "server/ignore-explicit-version",
+    file: "src/server.ts",
+    description: "ignore a caller-supplied version override",
+    find: "version: deps?.version ?? SERVER_VERSION,",
+    replace: "version: SERVER_VERSION,",
   },
   {
     id: "server/drop-annotations",

@@ -133,6 +133,24 @@ describe("http-server", () => {
       await client.close();
       await handler.close();
     });
+
+    it("advertises an explicitly supplied version over the protocol", async () => {
+      // Filesystem-less deployments (Cloudflare Workers) cannot read
+      // package.json, so they need a way to report something better than the
+      // sentinel — and it has to actually reach the client.
+      const odooClient = new MockClientBuilder().build();
+      const handler = createMcpHttpHandler(() =>
+        createServer({ client: odooClient, version: "9.9.9-custom" }),
+      );
+      const client = await connectClient(handler, {
+        versionNegotiation: { mode: "legacy" },
+      });
+
+      expect(client.getServerVersion()?.version).toBe("9.9.9-custom");
+
+      await client.close();
+      await handler.close();
+    });
   });
 
   describe("tool metadata", () => {
