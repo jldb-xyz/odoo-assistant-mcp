@@ -127,9 +127,12 @@ describe("bulk tools", () => {
     });
 
     it("validates required fields", async () => {
+      // `email` must exist on the model, otherwise an "Unknown field" error
+      // fires too and would mask a broken required-field check.
       vi.mocked(mockClient.getModelFields).mockResolvedValue({
         id: { type: "integer", string: "ID" },
         name: { type: "char", string: "Name", required: true },
+        email: { type: "char", string: "Email" },
       });
 
       const result = await bulkOperation(mockClient, {
@@ -140,7 +143,26 @@ describe("bulk tools", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Validation failed");
-      expect(result.result?.errors).toBeDefined();
+      expect(result.result?.errors).toHaveLength(1);
+      expect(result.result?.errors[0]?.error).toContain(
+        "Missing required field: name",
+      );
+    });
+
+    it("does not send records to Odoo when validation fails", async () => {
+      vi.mocked(mockClient.getModelFields).mockResolvedValue({
+        id: { type: "integer", string: "ID" },
+        name: { type: "char", string: "Name", required: true },
+        email: { type: "char", string: "Email" },
+      });
+
+      await bulkOperation(mockClient, {
+        model: "res.partner",
+        operation: "create",
+        values: [{ email: "test@example.com" }],
+      });
+
+      expect(mockClient.execute).not.toHaveBeenCalled();
     });
 
     it("validates field types", async () => {

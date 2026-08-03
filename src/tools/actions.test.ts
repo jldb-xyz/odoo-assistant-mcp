@@ -397,6 +397,30 @@ describe("action tools", () => {
       );
     });
 
+    it("invokes the action the caller asked for", async () => {
+      // Deliberately not action_confirm: this is a destructive tool, and
+      // running a different workflow action than the one requested (cancel vs
+      // confirm) must not be able to pass unnoticed.
+      vi.mocked(mockClient.getModelFields).mockResolvedValue({
+        id: { type: "integer", string: "ID" },
+      });
+      vi.mocked(mockClient.readRecords).mockResolvedValue([]);
+      vi.mocked(mockClient.execute).mockResolvedValue(true);
+
+      await executeAction(mockClient, {
+        model: "sale.order",
+        action: "action_cancel",
+        record_ids: [7, 8],
+      });
+
+      expect(mockClient.execute).toHaveBeenCalledWith(
+        "sale.order",
+        "action_cancel",
+        [[7, 8]],
+        {},
+      );
+    });
+
     it("returns error for non-existent action", async () => {
       vi.mocked(mockClient.getModelFields).mockResolvedValue({
         id: { type: "integer", string: "ID" },

@@ -45,8 +45,8 @@ describe(`execute tools - Odoo ${getOdooVersion()}`, () => {
   });
 
   describe("execute_method", () => {
-    it("executes search method", async () => {
-      if (skipReason) return;
+    it("executes search method", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await executeMethod(client, {
         model: "res.partner",
@@ -62,8 +62,8 @@ describe(`execute tools - Odoo ${getOdooVersion()}`, () => {
       expect(ids.length).toBeLessThanOrEqual(5);
     });
 
-    it("executes search_count method", async () => {
-      if (skipReason) return;
+    it("executes search_count method", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await executeMethod(client, {
         model: "res.partner",
@@ -76,8 +76,8 @@ describe(`execute tools - Odoo ${getOdooVersion()}`, () => {
       expect(result.result as number).toBeGreaterThanOrEqual(0);
     });
 
-    it("executes search_read method", async () => {
-      if (skipReason) return;
+    it("executes search_read method", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await executeMethod(client, {
         model: "res.partner",
@@ -96,8 +96,10 @@ describe(`execute tools - Odoo ${getOdooVersion()}`, () => {
       }
     });
 
-    it("executes read method", async () => {
-      if (skipReason || testPartnerId === null) return;
+    it("executes read method", async (ctx) => {
+      if (skipReason) ctx.skip();
+      // Odoo is up, so a missing fixture is a real failure, not a skip.
+      expect(testPartnerId).not.toBeNull();
 
       const result = await executeMethod(client, {
         model: "res.partner",
@@ -118,8 +120,10 @@ describe(`execute tools - Odoo ${getOdooVersion()}`, () => {
       expect(records[0]?.email).toBe("execute_test@test.example.com");
     });
 
-    it("executes read method with display_name", async () => {
-      if (skipReason || testPartnerId === null) return;
+    it("executes read method with display_name", async (ctx) => {
+      if (skipReason) ctx.skip();
+      // Odoo is up, so a missing fixture is a real failure, not a skip.
+      expect(testPartnerId).not.toBeNull();
 
       const result = await executeMethod(client, {
         model: "res.partner",
@@ -138,8 +142,8 @@ describe(`execute tools - Odoo ${getOdooVersion()}`, () => {
       expect(records[0]?.display_name).toContain("Execute Test Partner");
     });
 
-    it("executes fields_get method", async () => {
-      if (skipReason) return;
+    it("executes fields_get method", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await executeMethod(client, {
         model: "res.partner",
@@ -157,8 +161,8 @@ describe(`execute tools - Odoo ${getOdooVersion()}`, () => {
       expect(fields.id?.type).toBe("integer");
     });
 
-    it("executes create method", async () => {
-      if (skipReason) return;
+    it("executes create method", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await executeMethod(client, {
         model: "res.partner",
@@ -177,8 +181,10 @@ describe(`execute tools - Odoo ${getOdooVersion()}`, () => {
       await client.execute("res.partner", "unlink", [[createdId]]);
     });
 
-    it("executes write method", async () => {
-      if (skipReason || testPartnerId === null) return;
+    it("executes write method", async (ctx) => {
+      if (skipReason) ctx.skip();
+      // Odoo is up, so a missing fixture is a real failure, not a skip.
+      expect(testPartnerId).not.toBeNull();
 
       // Update the test partner
       const result = await executeMethod(client, {
@@ -201,8 +207,8 @@ describe(`execute tools - Odoo ${getOdooVersion()}`, () => {
       );
     });
 
-    it("normalizes domain for search methods", async () => {
-      if (skipReason) return;
+    it("normalizes domain for search methods", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       // Test with double-wrapped domain
       const result = await executeMethod(client, {
@@ -216,8 +222,8 @@ describe(`execute tools - Odoo ${getOdooVersion()}`, () => {
       expect(Array.isArray(result.result)).toBe(true);
     });
 
-    it("handles empty domain", async () => {
-      if (skipReason) return;
+    it("handles empty domain", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await executeMethod(client, {
         model: "res.partner",
@@ -230,8 +236,8 @@ describe(`execute tools - Odoo ${getOdooVersion()}`, () => {
       expect(Array.isArray(result.result)).toBe(true);
     });
 
-    it("returns error for non-existent method", async () => {
-      if (skipReason) return;
+    it("returns error for non-existent method", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await executeMethod(client, {
         model: "res.partner",
@@ -243,8 +249,8 @@ describe(`execute tools - Odoo ${getOdooVersion()}`, () => {
       expect(result.error).toBeDefined();
     });
 
-    it("returns error for non-existent model", async () => {
-      if (skipReason) return;
+    it("returns error for non-existent model", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await executeMethod(client, {
         model: "nonexistent.model.xyz",
@@ -256,8 +262,8 @@ describe(`execute tools - Odoo ${getOdooVersion()}`, () => {
       expect(result.error).toBeDefined();
     });
 
-    it("executes with complex kwargs", async () => {
-      if (skipReason) return;
+    it("executes with complex kwargs", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await executeMethod(client, {
         model: "res.partner",
@@ -281,8 +287,8 @@ describe(`execute tools - Odoo ${getOdooVersion()}`, () => {
       }
     });
 
-    it("executes on ir.model to list models", async () => {
-      if (skipReason) return;
+    it("executes on ir.model to list models", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await executeMethod(client, {
         model: "ir.model",
@@ -297,8 +303,8 @@ describe(`execute tools - Odoo ${getOdooVersion()}`, () => {
       expect(models.some((m) => m.model === "res.partner")).toBe(true);
     });
 
-    it("handles missing optional args and kwargs", async () => {
-      if (skipReason) return;
+    it("handles missing optional args and kwargs", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await executeMethod(client, {
         model: "res.partner",

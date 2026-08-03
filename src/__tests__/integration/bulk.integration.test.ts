@@ -40,8 +40,8 @@ describe(`bulk tools - Odoo ${getOdooVersion()}`, () => {
   });
 
   describe("bulk_operation - create", () => {
-    it("creates multiple records in bulk", async () => {
-      if (skipReason) return;
+    it("creates multiple records in bulk", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await bulkOperation(client, {
         model: "res.partner",
@@ -69,8 +69,8 @@ describe(`bulk tools - Odoo ${getOdooVersion()}`, () => {
       createdPartnerIds.push(...(data.created_ids || []));
     });
 
-    it("validates without executing (dry run)", async () => {
-      if (skipReason) return;
+    it("validates without executing (dry run)", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await bulkOperation(client, {
         model: "res.partner",
@@ -88,8 +88,8 @@ describe(`bulk tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.created_ids).toBeUndefined();
     });
 
-    it("validates field types", async () => {
-      if (skipReason) return;
+    it("validates field types", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await bulkOperation(client, {
         model: "res.partner",
@@ -107,8 +107,8 @@ describe(`bulk tools - Odoo ${getOdooVersion()}`, () => {
       expect(result.result?.errors.length).toBeGreaterThan(0);
     });
 
-    it("detects unknown fields", async () => {
-      if (skipReason) return;
+    it("detects unknown fields", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await bulkOperation(client, {
         model: "res.partner",
@@ -127,8 +127,8 @@ describe(`bulk tools - Odoo ${getOdooVersion()}`, () => {
       expect(errorMessages).toContain("Unknown field");
     });
 
-    it("returns error for empty values array", async () => {
-      if (skipReason) return;
+    it("returns error for empty values array", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await bulkOperation(client, {
         model: "res.partner",
@@ -158,8 +158,10 @@ describe(`bulk tools - Odoo ${getOdooVersion()}`, () => {
       createdPartnerIds.push(...ids);
     });
 
-    it("updates multiple records in bulk", async () => {
-      if (skipReason || updateTestIds.length === 0) return;
+    it("updates multiple records in bulk", async (ctx) => {
+      if (skipReason) ctx.skip();
+      // Odoo is up, so a missing fixture is a real failure, not a skip.
+      expect(updateTestIds.length).toBeGreaterThan(0);
 
       const result = await bulkOperation(client, {
         model: "res.partner",
@@ -188,8 +190,10 @@ describe(`bulk tools - Odoo ${getOdooVersion()}`, () => {
       }
     });
 
-    it("validates update values (dry run)", async () => {
-      if (skipReason || updateTestIds.length === 0) return;
+    it("validates update values (dry run)", async (ctx) => {
+      if (skipReason) ctx.skip();
+      // Odoo is up, so a missing fixture is a real failure, not a skip.
+      expect(updateTestIds.length).toBeGreaterThan(0);
 
       const result = await bulkOperation(client, {
         model: "res.partner",
@@ -208,8 +212,8 @@ describe(`bulk tools - Odoo ${getOdooVersion()}`, () => {
       expect(data.updated_ids).toBeUndefined();
     });
 
-    it("returns error for missing record_ids", async () => {
-      if (skipReason) return;
+    it("returns error for missing record_ids", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await bulkOperation(client, {
         model: "res.partner",
@@ -221,8 +225,8 @@ describe(`bulk tools - Odoo ${getOdooVersion()}`, () => {
       expect(result.error).toContain("requires 'record_ids'");
     });
 
-    it("returns error for missing update_values", async () => {
-      if (skipReason) return;
+    it("returns error for missing update_values", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await bulkOperation(client, {
         model: "res.partner",
@@ -236,8 +240,8 @@ describe(`bulk tools - Odoo ${getOdooVersion()}`, () => {
   });
 
   describe("bulk_operation - unlink", () => {
-    it("deletes multiple records in bulk", async () => {
-      if (skipReason) return;
+    it("deletes multiple records in bulk", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       // Create records specifically for deletion
       const ids = await client.execute<number[]>("res.partner", "create", [
@@ -273,8 +277,8 @@ describe(`bulk tools - Odoo ${getOdooVersion()}`, () => {
       expect(remaining).toHaveLength(0);
     });
 
-    it("validates unlink (dry run)", async () => {
-      if (skipReason) return;
+    it("validates unlink (dry run)", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       // Create a record for dry run test
       const id = await client.execute<number>("res.partner", "create", [
@@ -306,8 +310,8 @@ describe(`bulk tools - Odoo ${getOdooVersion()}`, () => {
       expect(records).toHaveLength(1);
     });
 
-    it("returns error for missing record_ids", async () => {
-      if (skipReason) return;
+    it("returns error for missing record_ids", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await bulkOperation(client, {
         model: "res.partner",
@@ -320,8 +324,8 @@ describe(`bulk tools - Odoo ${getOdooVersion()}`, () => {
   });
 
   describe("bulk_operation - error handling", () => {
-    it("returns error for non-existent model", async () => {
-      if (skipReason) return;
+    it("returns error for non-existent model", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await bulkOperation(client, {
         model: "nonexistent.model.xyz",
@@ -333,8 +337,8 @@ describe(`bulk tools - Odoo ${getOdooVersion()}`, () => {
       expect(result.error).toContain("not found");
     });
 
-    it("handles batch_size parameter", async () => {
-      if (skipReason) return;
+    it("handles batch_size parameter", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       // Create with small batch size
       const result = await bulkOperation(client, {

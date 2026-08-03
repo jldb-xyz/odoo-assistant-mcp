@@ -673,6 +673,51 @@ describe("introspection tools", () => {
       expect(data.example_value).toBeDefined();
     });
 
+    it("flags a required field as required in the guidance", async () => {
+      vi.mocked(mockClient.getModelFields).mockResolvedValue({
+        name: { type: "char", string: "Name", required: true },
+      });
+
+      const result = await explainField(mockClient, {
+        model: "res.partner",
+        field: "name",
+      });
+
+      const data = result.result as Record<string, unknown>;
+      expect(data.usage_guidance).toContain("Required field");
+    });
+
+    it("does not describe an optional field as required", async () => {
+      // Guidance is read by the model to decide what a create call must
+      // supply; marking optional fields required sends it down false paths.
+      vi.mocked(mockClient.getModelFields).mockResolvedValue({
+        comment: { type: "text", string: "Notes", required: false },
+      });
+
+      const result = await explainField(mockClient, {
+        model: "res.partner",
+        field: "comment",
+      });
+
+      const data = result.result as Record<string, unknown>;
+      expect(data.required).toBe(false);
+      expect(data.usage_guidance).not.toContain("Required field");
+    });
+
+    it("flags a read-only field as read-only in the guidance", async () => {
+      vi.mocked(mockClient.getModelFields).mockResolvedValue({
+        display_name: { type: "char", string: "Display Name", readonly: true },
+      });
+
+      const result = await explainField(mockClient, {
+        model: "res.partner",
+        field: "display_name",
+      });
+
+      const data = result.result as Record<string, unknown>;
+      expect(data.usage_guidance).toContain("Read-only");
+    });
+
     it("includes relation info for relational fields", async () => {
       vi.mocked(mockClient.getModelFields).mockResolvedValue({
         partner_id: {

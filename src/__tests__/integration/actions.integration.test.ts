@@ -31,8 +31,8 @@ describe(`action tools - Odoo ${getOdooVersion()}`, () => {
   });
 
   describe("list_available_actions", () => {
-    it("lists actions for res.partner model", async () => {
-      if (skipReason) return;
+    it("lists actions for res.partner model", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await listAvailableActions(client, {
         model: "res.partner",
@@ -60,8 +60,8 @@ describe(`action tools - Odoo ${getOdooVersion()}`, () => {
       expect(actionMethods).toContain("action_cancel");
     });
 
-    it("includes state field information when available", async () => {
-      if (skipReason) return;
+    it("includes state field information when available", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       // ir.module.module has a state field
       const result = await listAvailableActions(client, {
@@ -84,8 +84,8 @@ describe(`action tools - Odoo ${getOdooVersion()}`, () => {
       }
     });
 
-    it("returns actions for specific record", async () => {
-      if (skipReason) return;
+    it("returns actions for specific record", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       // Get first module record
       const modules = await client.searchRead(
@@ -113,8 +113,8 @@ describe(`action tools - Odoo ${getOdooVersion()}`, () => {
       }
     });
 
-    it("includes server actions when requested", async () => {
-      if (skipReason) return;
+    it("includes server actions when requested", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await listAvailableActions(client, {
         model: "res.partner",
@@ -125,8 +125,8 @@ describe(`action tools - Odoo ${getOdooVersion()}`, () => {
       // Server actions may or may not exist, just verify the call works
     });
 
-    it("returns error for non-existent model", async () => {
-      if (skipReason) return;
+    it("returns error for non-existent model", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await listAvailableActions(client, {
         model: "nonexistent.model.xyz",
@@ -138,8 +138,8 @@ describe(`action tools - Odoo ${getOdooVersion()}`, () => {
   });
 
   describe("execute_action", () => {
-    it("executes action on ir.config_parameter", async () => {
-      if (skipReason) return;
+    it("executes action on ir.config_parameter", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       // Find a config parameter
       const params = await client.searchRead("ir.config_parameter", [], {
@@ -162,8 +162,8 @@ describe(`action tools - Odoo ${getOdooVersion()}`, () => {
       }
     });
 
-    it("handles invalid action name gracefully", async () => {
-      if (skipReason) return;
+    it("handles invalid action name gracefully", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       // Create a test partner to execute on
       const partnerId = await client.execute<number>("res.partner", "create", [
@@ -185,8 +185,8 @@ describe(`action tools - Odoo ${getOdooVersion()}`, () => {
       }
     });
 
-    it("returns error for non-existent records", async () => {
-      if (skipReason) return;
+    it("returns error for non-existent records", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await executeAction(client, {
         model: "res.partner",
@@ -198,8 +198,8 @@ describe(`action tools - Odoo ${getOdooVersion()}`, () => {
       expect(result.success).toBe(false);
     });
 
-    it("returns error for non-existent model", async () => {
-      if (skipReason) return;
+    it("returns error for non-existent model", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       const result = await executeAction(client, {
         model: "nonexistent.model.xyz",
@@ -211,8 +211,8 @@ describe(`action tools - Odoo ${getOdooVersion()}`, () => {
       expect(result.error).toContain("not found");
     });
 
-    it("executes valid method and captures result", async () => {
-      if (skipReason) return;
+    it("executes valid method and captures result", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       // Create a test partner
       const partnerId = await client.execute<number>("res.partner", "create", [
@@ -238,8 +238,8 @@ describe(`action tools - Odoo ${getOdooVersion()}`, () => {
       }
     });
 
-    it("passes context to action", async () => {
-      if (skipReason) return;
+    it("passes context to action", async (ctx) => {
+      if (skipReason) ctx.skip();
 
       // Create a test partner
       const partnerId = await client.execute<number>("res.partner", "create", [

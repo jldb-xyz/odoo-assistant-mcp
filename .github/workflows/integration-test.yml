@@ -21,20 +21,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Enable Corepack
-        run: corepack enable
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: yarn
+          node-version: 24
+          cache: pnpm
 
       - name: Install dependencies
-        run: yarn install --immutable
+        run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: yarn build
+        run: pnpm build
 
       - name: Start Odoo ${{ inputs.odoo-version }} with Docker Compose
         run: docker compose ${{ inputs.docker-profile }} up -d
@@ -44,9 +44,12 @@ jobs:
         timeout-minutes: 5
 
       - name: Run integration tests against Odoo ${{ inputs.odoo-version }}
-        run: yarn test:integration:${{ inputs.odoo-version }}
+        run: pnpm test:integration:${{ inputs.odoo-version }}
         env:
           ODOO_VERSION: ${{ inputs.odoo-version }}
+          # Fail the job if Odoo is unreachable rather than reporting a pass
+          # for tests that never ran.
+          REQUIRE_INTEGRATION_TESTS: "true"
 
       - name: Show Docker logs on failure
         if: failure()
