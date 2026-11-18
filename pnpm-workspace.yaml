@@ -4,7 +4,7 @@ overrides:
   # bounds check in v3/v5/v6 when `buf` is supplied). exceljs only ever calls
   # v4() with no buffer, so the path is unreachable — but uuid's `{ v4 }` named
   # export is unchanged from v8 to v11, so patching costs nothing.
-  uuid@<11.1.1: ^11.1.1
+  uuid@<11.1.1: ^14.0.0
 # Deliberately NOT overridden: @hono/node-server < 2.0.5 (GHSA-frvp-7c67-39w9).
 # @modelcontextprotocol/node pins ^1.19.9 and uses it only for Node <-> Web
 # request conversion. The advisory is a Windows-only path traversal in
